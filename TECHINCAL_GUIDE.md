@@ -31,15 +31,15 @@ The system consists of three main components:
 2. Initialize a new Vagrant box.
 3. SSH into the Vagrant box to configure it.
 
-*Note: Detailed instructions for setting up a Vagrant box or Docker container will be provided.*
+*Note: Detailed instructions for setting up a Vagrant box or Docker container will be provided to the user by ChatGPT.*
 
 ### Local Gateway Tool
 
 1. Clone the PersonAI repository.
 2. Navigate to the directory and run the tool.
 
-*Note: Detailed instructions for setting up and running the Local Gateway Tool will be provided.*
+*Note: Detailed instructions for setting up and running the Local Gateway Tool will be provided to the user by ChatGPT.*
 
 ## Conclusion
 
-This guide provides a high-level overview of the PersonAI architecture and components. Detailed setup instructions will follow in subsequent sections. The aim is to make powerful AI capabilities accessible to everyone, regardless of their technical expertise.
+This guide provides a high-level overview of the PersonAI architecture and components. Detailed setup instructions will depend on a user's actual environment and budget. The aim is to make powerful AI capabilities accessible to everyone, regardless of their technical expertise, bootstrapping the process using AI itself.
