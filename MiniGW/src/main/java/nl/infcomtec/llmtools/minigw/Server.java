@@ -18,20 +18,16 @@ import javax.swing.JLabel;
  * @author walter
  */
 public class Server extends Thread {
-    
-    private enum S {
-        init,
-    };
-    
+
     public Server() {
         startVagrant();
     }
-    
+
     @Override
     public void run() {
-        
+
     }
-    
+
     private void startVagrant() {
         final JFrame gui = new JFrame("Mini Gateway");
         gui.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -88,14 +84,8 @@ public class Server extends Thread {
                 }
             }
         }));
-        vert.add(new JButton(new AbstractAction("(Re)start MiniGW client") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                MiniGW.startClient();
-            }
-        }));
         pane.add(vert, BorderLayout.CENTER);
         gui.pack();
     }
-    
+
 }

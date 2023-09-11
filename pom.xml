@@ -31,6 +31,12 @@
             <artifactId>okhttp</artifactId>
             <version>4.9.1</version> <!-- Check for the latest version -->
         </dependency>
+        <!-- JSch dependency for connecting to the vagrant box -->
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.55</version>
+        </dependency>
     </dependencies>
     <name>LLMTools</name>
     <description>As the parent project, this includes needed dependencies and
