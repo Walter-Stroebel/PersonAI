@@ -1,4 +1,4 @@
-package nl.infcomtec.llmtools;
+package nl.infcomtec.llmtools.minigw;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
