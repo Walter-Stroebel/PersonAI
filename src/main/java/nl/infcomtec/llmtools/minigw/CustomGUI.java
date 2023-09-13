@@ -3,7 +3,11 @@ package nl.infcomtec.llmtools.minigw;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.EventQueue;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.List;
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
@@ -12,12 +16,23 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
+import javax.swing.UIManager;
 
 public class CustomGUI {
+
+    private static Dialogs dialogs;
+    private static final Font font = new Font(Font.SERIF, Font.PLAIN, 24); // TODO make adjustable
+    private static final String osName = System.getProperty("os.name").toLowerCase();
 
     // just for a quick test
     public static void main(String[] args) {
         CustomGUI gui = new CustomGUI();
+        dialogs = new Dialogs(gui);
+        dialogs.addMainTopic(new DialogStep("Test 1", "First test"));
+        dialogs.addMainTopic(new DialogStep("Test 2", "Second test"));
+        dialogs.addMainTopic(new DialogStep("Test 3", "Third test"));
+        dialogs.addMainTopic(new DialogStep("Test 4", "Fourth test"));
+        gui.initGUI();
         gui.putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -32,10 +47,17 @@ public class CustomGUI {
     public final JTabbedPane tabbedPane;
 
     public CustomGUI() {
+        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
+            for (String key = bfr.readLine(); null != key; key = bfr.readLine()) {
+                    UIManager.put(key, font);
+            }
+        } catch (IOException ex) {
+            // we tried ... might not be fatal
+            System.err.println(ex.getMessage());
+        }
         frame = new JFrame("Custom GUI");
         toolBar = new JToolBar();
         tabbedPane = new JTabbedPane();
-        initGUI();
     }
 
     private void initGUI() {
@@ -53,7 +75,7 @@ public class CustomGUI {
         frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
         // Add some empty tabs for demonstration
-        tabbedPane.addTab("Tab 1", new JPanel());
+        tabbedPane.addTab("Tab 1", dialogs.getTopics());
         tabbedPane.addTab("Tab 2", new JPanel());
 
     }
