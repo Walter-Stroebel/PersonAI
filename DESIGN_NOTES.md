@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document outlines the design principles and considerations for the PersonAI project. The aim is to keep the architecture and codebase as simple as possible while enabling powerful capabilities through the Language Learning Model (LLM).
+This document outlines the design principles and considerations for the PersonAI project. The aim is to keep the architecture and codebase as simple as possible while enabling powerful capabilities through the Large Language Model (LLM).
 
 ## Design Principles
 
