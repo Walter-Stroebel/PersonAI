@@ -1,4 +1,4 @@
-package nl.infcomtec.llmtools.minigw;
+package nl.infcomtec.personai.minigw;
 
 import java.awt.BorderLayout;
 import java.awt.Component;

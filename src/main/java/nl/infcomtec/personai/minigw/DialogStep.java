@@ -1,6 +1,6 @@
 /*
  */
-package nl.infcomtec.llmtools.minigw;
+package nl.infcomtec.personai.minigw;
 
 import java.util.LinkedList;
 import java.util.List;

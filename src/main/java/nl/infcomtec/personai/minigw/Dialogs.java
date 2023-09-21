@@ -1,4 +1,4 @@
-package nl.infcomtec.llmtools.minigw;
+package nl.infcomtec.personai.minigw;
 
 import java.awt.Color;
 import java.awt.event.ActionEvent;
