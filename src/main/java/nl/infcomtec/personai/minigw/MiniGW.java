@@ -17,7 +17,8 @@ public class MiniGW {
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     public static void main(String[] args) {
-        new Server().start();
+        CustomGUI gui = new CustomGUI();
+        gui.setVisible();
     }
 
 }
