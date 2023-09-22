@@ -1,22 +1,35 @@
-package nl.infcomtec.personai.minigw;
+package nl.infcomtec.personai;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextArea;
 import javax.swing.JToolBar;
+import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
+import nl.infcomtec.simpleimage.ImageObject;
+import nl.infcomtec.simpleimage.ImageViewer;
 
 public class CustomGUI {
 
@@ -26,8 +39,17 @@ public class CustomGUI {
     public final JFrame frame;
     public final JToolBar toolBar;
     public final JTabbedPane tabbedPane;
+    public ImageObject dot;
+    private JTextArea topic;
+    private JList<Instruction> insList;
+    private Instructions ins;
 
     public CustomGUI() {
+        try {
+            dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
+        } catch (IOException ex) {
+            Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
         try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
             for (String key = bfr.readLine(); null != key; key = bfr.readLine()) {
                 UIManager.put(key, font);
@@ -61,14 +83,45 @@ public class CustomGUI {
 
         // Add JTabbedPane to the center
         frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-
-        tabbedPane.addTab("Main", new JPanel());
+        JPanel main = new JPanel(new BorderLayout());
+        main.add(new ImageViewer(dot).getScalePanPanel(), BorderLayout.CENTER);
+        Box box = Box.createVerticalBox();
+        box.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Chat input"));
+        {
+            try {
+                ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
+           // ins.insList.add(new Instruction("Alternatives", "Find any alternatives from this text.", Instruction.ArgumentType.IMMEDIATE_CHILDREN));
+            ins.save(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
+            } catch (IOException ex) {
+                Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
+                System.exit(1);
+            }
+            insList = ins.getAsList();
+            Box h = Box.createHorizontalBox();
+            insList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            h.add(new JLabel("Pick an operation: "));
+            h.add(insList);
+            box.add(h);
+        }
+        box.add(Box.createVerticalGlue());
+        box.add(new JLabel("Type a message here (optional):"));
+        box.add(new JScrollPane(new JTextArea(10, 40)));
+        box.add(Box.createVerticalGlue());
+        box.add(new JButton(new AbstractAction("\"Ask the chat\"") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                
+            }
+        }));
+        main.add(box, BorderLayout.EAST);
+        topic = new JTextArea(20, 80);
+        main.add(new JScrollPane(topic), BorderLayout.SOUTH);
+        tabbedPane.addTab("Main", main);
         tabbedPane.addTab("Tab 2", new JPanel());
-
     }
 
     public final synchronized void putOnBar(Component component) {
-        String name = getCompName(component);
+        getCompName(component); // test
         delFromBar(component);
         toolBar.add(component);
     }

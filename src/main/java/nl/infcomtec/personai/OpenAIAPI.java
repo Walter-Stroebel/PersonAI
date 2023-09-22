@@ -1,4 +1,4 @@
-package nl.infcomtec.personai.minigw;
+package nl.infcomtec.personai;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -47,27 +47,16 @@ public class OpenAIAPI {
     /**
      * Ask a question.
      *
+     * @param system System prompt (optional).
      * @param question to ask the assistant.
      * @return the assistant's answer.
      * @throws IOException if something failed.
      */
-    public static String makeRequest(String question) throws IOException {
+    public static String makeRequest(String system, String question) throws IOException {
         ArrayList<Message> two = new ArrayList<>();
-        two.add(new Message(Message.ROLES.system, "You are a helpful assistant."));
+        two.add(new Message(Message.ROLES.system, null == system ? "You are a helpful assistant." : system));
         two.add(new Message(Message.ROLES.user, question));
         return makeRequest(two);
-    }
-
-    /**
-     * Ask some questions.
-     *
-     * @param messages questions to ask the assistant, should be
-     * system,[user,assistant]*,user.
-     * @return the assistant's answer.
-     * @throws IOException if something failed.
-     */
-    public static String makeRequest(Message[] messages) throws IOException {
-        return makeRequest(Arrays.asList(messages));
     }
 
     /**
@@ -83,6 +72,18 @@ public class OpenAIAPI {
             ret += u.totalTokens;
         }
         return ret;
+    }
+
+    /**
+     * Ask some questions.
+     *
+     * @param messages questions to ask the assistant, should be
+     * system,[user,assistant]*,user.
+     * @return the assistant's answer.
+     * @throws IOException if something failed.
+     */
+    public static String makeRequest(Message[] messages) throws IOException {
+        return makeRequest(Arrays.asList(messages));
     }
 
     /**

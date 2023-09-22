@@ -1,4 +1,4 @@
-package nl.infcomtec.personai.minigw;
+package nl.infcomtec.personai;
 
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;

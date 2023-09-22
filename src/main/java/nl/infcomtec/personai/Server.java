@@ -1,4 +1,4 @@
-package nl.infcomtec.personai.minigw;
+package nl.infcomtec.personai;
 
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;

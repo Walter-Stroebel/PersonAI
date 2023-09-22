@@ -1,6 +1,6 @@
 /*
  */
-package nl.infcomtec.personai.minigw;
+package nl.infcomtec.personai;
 
 import com.google.gson.JsonObject;
 
