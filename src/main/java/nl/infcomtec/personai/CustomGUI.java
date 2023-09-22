@@ -87,10 +87,9 @@ public class CustomGUI {
                     ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=ellipse"));
                     graph.addNode(new ClEdge(n1, n2, "", null));
                     graph.addNode(new ClEdge(n2, n3, "", null));
-                    graph.selection.add(n2.id);
-                    graph.selection.add(n3.id);
                     BufferedImage render = graph.render();
                     dot.putImage(render);
+                    graph.segments = dot.calculateClosestAreas(graph.nodeCenters.values());
                     frame.repaint();
                 } catch (Exception ex) {
                     Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);

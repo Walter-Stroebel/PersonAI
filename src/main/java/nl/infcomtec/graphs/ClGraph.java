@@ -11,13 +11,12 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.imageio.ImageIO;
+import nl.infcomtec.simpleimage.BitShape;
 import nl.infcomtec.tools.ToolManager;
 
 /**
@@ -35,16 +34,14 @@ public class ClGraph {
     public final AtomicReference<Color> defaultNodeBackgroundColor = new AtomicReference<>(Color.WHITE);
     public final AtomicReference<Color> defaultEdgeForegroundColor = new AtomicReference<>(Color.BLACK);
     public final AtomicReference<Color> defaultEdgeBackgroundColor = new AtomicReference<>(Color.WHITE);
-    public final AtomicReference<Color> defaultSelBackgroundColor = new AtomicReference<>(Color.DARK_GRAY);
-    public final AtomicReference<Color> defaultSelForegroundColor = new AtomicReference<>(Color.RED);
     private final TreeMap<Integer, ClNode> nodeMap = new TreeMap<>();
-    private HashMap<String, Point2D> nodeCenters;
-    public final List<Integer> selection = new LinkedList<>();
+    public HashMap<String, Point2D> nodeCenters;
+    public HashMap<Point2D, BitShape> segments;
 
     public synchronized void clear() {
         nodeMap.clear();
         nodeCenters = null;
-        selection.clear();
+        segments = null;
         uid.set(0);
     }
 
@@ -105,26 +102,6 @@ public class ClGraph {
                 if (n instanceof ClEdge) {
                     gr.append(n.generateDotRepresentation()).append(System.lineSeparator());
                 }
-            }
-            if (!selection.isEmpty()) {
-                gr.append("Sel [style=filled, label=\"Sel\", color=");
-                gr.append(dotColor(defaultSelForegroundColor.get()));
-                gr.append(", fillcolor=");
-                gr.append(dotColor(defaultSelBackgroundColor.get()));
-                gr.append(", fontcolor=");
-                gr.append(dotColor(defaultSelForegroundColor.get()));
-                gr.append("];").append(System.lineSeparator());
-            }
-            for (int i = 0; i < selection.size(); i++) {
-                gr.append("Sel -> N");
-                gr.append(selection.get(i));
-                gr.append(" [label=\"").append(i).append("\", color=");
-                gr.append(dotColor(defaultSelForegroundColor.get()));
-                gr.append(", fillcolor=");
-                gr.append(dotColor(defaultSelBackgroundColor.get()));
-                gr.append(", fontcolor=");
-                gr.append(dotColor(defaultSelForegroundColor.get()));
-                gr.append("];").append(System.lineSeparator());
             }
             tm.setInput(gr.append("}").append(System.lineSeparator()).toString());
             tm.setOutput(out);
