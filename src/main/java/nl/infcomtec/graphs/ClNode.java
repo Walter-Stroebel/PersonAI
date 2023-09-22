@@ -84,9 +84,9 @@ public class ClNode {
 
         sb.append("N").append(nodeId)
                 .append(" [style=filled, label=\"").append(label).append("\", ")
-                .append("color=\"#").append(Integer.toHexString(foreColor.getRGB()).substring(2)).append("\", ")
-                .append("fillcolor=\"#").append(Integer.toHexString(backColor.getRGB()).substring(2)).append("\", ")
-                .append("fontcolor=\"#").append(Integer.toHexString(foreColor.getRGB()).substring(2)).append("\"");
+                .append("color=").append(ClGraph.dotColor(foreColor))
+                .append(", fillcolor=").append(ClGraph.dotColor(backColor))
+                .append(", fontcolor=").append(ClGraph.dotColor(foreColor));
 
         if (attributes != null && !attributes.isEmpty()) {
             sb.append(", ").append(attributes);
@@ -95,6 +95,7 @@ public class ClNode {
         System.out.println(sb);
         return sb.toString();
     }
+
 
     /**
      * @return the userObj

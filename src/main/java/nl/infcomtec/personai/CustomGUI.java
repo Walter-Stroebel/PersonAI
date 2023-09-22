@@ -33,6 +33,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JToolBar;
 import javax.swing.UIManager;
+import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClGraph;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
@@ -84,6 +85,10 @@ public class CustomGUI {
                     ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
                     ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=diamond"));
                     ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=ellipse"));
+                    graph.addNode(new ClEdge(n1, n2, "", null));
+                    graph.addNode(new ClEdge(n2, n3, "", null));
+                    graph.selection.add(n2.id);
+                    graph.selection.add(n3.id);
                     BufferedImage render = graph.render();
                     dot.putImage(render);
                     frame.repaint();
