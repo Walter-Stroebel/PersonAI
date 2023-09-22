@@ -17,7 +17,7 @@ public class MiniGW {
     public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key");
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception{
         WORK_DIR.mkdirs(); // in case it doesn't
         if(!WORK_DIR.exists()){
             System.err.println("Cannot access nor create work directory?");

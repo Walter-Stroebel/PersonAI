@@ -62,7 +62,7 @@ public class ImageObject extends Image {
 
     public synchronized void forwardMouse(MouseEvents ev, MouseEvent e) {
         for (ImageObjectListener listener : listeners) {
-            System.out.println("Calling listener " + listener.name);
+            //System.out.println("Calling listener " + listener.name);
             listener.mouseEvent(this, ev, e);
         }
 
@@ -83,7 +83,7 @@ public class ImageObject extends Image {
         }
         releaseImage();
         for (ImageObjectListener listener : listeners) {
-            System.out.println("Calling listener " + listener.name);
+            //System.out.println("Calling listener " + listener.name);
             listener.imageChanged(this);
         }
     }

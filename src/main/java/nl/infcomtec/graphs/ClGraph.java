@@ -11,6 +11,8 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,6 +33,14 @@ public class ClGraph {
     public final AtomicReference<Color> defaultEdgeBackgroundColor = new AtomicReference<>(Color.WHITE);
     private final TreeMap<Integer, ClNode> nodeMap = new TreeMap<>();
     private HashMap<String, Point2D> nodeCenters;
+    public final List<ClNode> selection = new LinkedList<>();
+
+    public synchronized void clear() {
+        nodeMap.clear();
+        nodeCenters=null;
+        selection.clear();
+        uid.set(0);
+    }
 
     public ClNode addNode(ClNode node) {
         nodeMap.put(node.getId(), node);
