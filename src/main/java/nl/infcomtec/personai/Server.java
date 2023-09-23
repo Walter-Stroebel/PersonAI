@@ -184,7 +184,7 @@ public class Server extends Thread {
         pane.add(new JLabel("Please wait, starting vagrant box."), BorderLayout.CENTER);
         gui.pack();
         try {
-            EventQueue.invokeAndWait(new Runnable() {
+            EventQueue.invokeLater(new Runnable() {
                 @Override
                 public void run() {
                     gui.setVisible(true);

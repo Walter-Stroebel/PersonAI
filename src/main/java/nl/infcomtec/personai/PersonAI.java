@@ -223,6 +223,12 @@ public class PersonAI {
                 setVisible();
             }
         }));
+        putOnBar(new JButton(new AbstractAction("Start Vagrant") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                new Server();
+            }
+        }));
     }
 
     public final synchronized void putOnBar(Component component) {
