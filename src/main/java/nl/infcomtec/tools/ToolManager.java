@@ -63,9 +63,6 @@ public abstract class ToolManager implements Runnable {
     public int exitCode;
 
     protected void setWorkingDir(File dir) {
-        if (null != workingDir) {
-            throw new RuntimeException("Duplicate definition of working dir");
-        }
         if (!dir.exists()) {
             if (!dir.mkdirs()) {
                 throw new RuntimeException("Failed to create the directory");
@@ -126,6 +123,7 @@ public abstract class ToolManager implements Runnable {
                 throw new RuntimeException(e);
             }
         }
+        pb.directory(workingDir);
         if (null == stdoutStream) {
             stdoutStream = new ByteArrayOutputStream();
         }

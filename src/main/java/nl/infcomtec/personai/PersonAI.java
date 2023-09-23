@@ -51,6 +51,7 @@ public class PersonAI {
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW");
     public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key");
+
     public static void main(String[] args) throws Exception {
         PersonAI.WORK_DIR.mkdirs(); // in case it doesn't
         if (!PersonAI.WORK_DIR.exists()) {
@@ -68,6 +69,7 @@ public class PersonAI {
     private Instruction curIns;
     public ClGraph graph = new ClGraph();
     private ImageViewer dotViewer;
+    private Vagrant vagrant;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -226,14 +228,48 @@ public class PersonAI {
         putOnBar(new JButton(new AbstractAction("Start Vagrant") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                if (null!=vagrant){
+                if (null != vagrant) {
                     vagrant.stop();
                 }
-                vagrant=new Vagrant();
+                vagrant = new Vagrant();
+                vagrant.start();
+            }
+        }));
+        putOnBar(new JButton(new AbstractAction("Check Vagrant logs") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                if (null != vagrant) {
+                    synchronized (vagrant.log) {
+                        String log = vagrant.log.toString();
+                        setTabText("Vagrant log", log);
+                    }
+                }
+            }
+        }));
+        putOnBar(new JButton(new AbstractAction("Stop Vagrant") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                if (null != vagrant) {
+                    vagrant.stop();
+                } else {
+                    vagrant = new Vagrant();
+                    vagrant.stop();
+                }
             }
         }));
     }
-            private Vagrant vagrant;
+
+    private void setTabText(String title, String log) {
+        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
+            if (tabbedPane.getTitleAt(i).endsWith(title)) {
+                tabbedPane.setComponentAt(i, new JScrollPane(new JTextArea(log)));
+                tabbedPane.setSelectedIndex(i);
+                return;
+            }
+        }
+        tabbedPane.add(title, new JScrollPane(new JTextArea(log)));
+        tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+    }
 
     public final synchronized void putOnBar(Component component) {
         getCompName(component); // test

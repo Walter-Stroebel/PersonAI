@@ -17,6 +17,9 @@ import nl.infcomtec.tools.ToolManager;
  */
 public class Vagrant extends ToolManager {
 
+    public Vagrant() {
+    }
+
     public static final String MARK_START = "$#";
     public static final String MARK_END = "#$";
     private com.jcraft.jsch.Session session;
@@ -27,6 +30,11 @@ public class Vagrant extends ToolManager {
 
     public void stop() {
         state.set(Step.stop);
+        new Thread(this).start();
+    }
+
+    public void start() {
+        state.set(Step.start);
         new Thread(this).start();
     }
 
@@ -66,14 +74,19 @@ public class Vagrant extends ToolManager {
                 setCommand("vagrant", "up");
                 internalRun();
                 if (exitCode != 0) {
-                    log("Running pandoc failed, rc=", Integer.toString(exitCode));
+                    log("Running vagrant failed, rc=", Integer.toString(exitCode));
                 }
                 if (stdoutStream instanceof ByteArrayOutputStream) {
                     log("Vagrant start up:", EOLN,
                             new String(((ByteArrayOutputStream) stdoutStream).toByteArray(), StandardCharsets.UTF_8));
+                    stdoutStream = null;
                 } else {
                     log("Vagrant start up:", Objects.toString(stdoutStream));
                 }
+                if (stderrBuilder.length() > 0) {
+                    log("Vagrant error output:" + stderrBuilder.toString());
+                }
+                stderrBuilder.setLength(0);
                 try {
                     JSch jsch = new JSch();
                     jsch.addIdentity(PersonAI.VAGRANT_KEY.getAbsolutePath());
