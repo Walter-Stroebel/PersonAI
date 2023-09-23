@@ -8,15 +8,23 @@ public class PandocConverter extends ToolManager {
     private String output;
 
     public String convertMarkdownToHTML(String markdownInput) {
+        setInput(markdownInput);
+        // Set up the command to run Pandoc
+        setCommand("pandoc", "-f", "markdown", "-t", "html");
+        run();
+        return output;
+    }
 
-        // Return the converted HTML as a String
-        return stdoutStream.toString();
+    public String convertMarkdownToText132(String markdownInput) {
+        setInput(markdownInput);
+        // Set up the command to run Pandoc --wrap=auto  -f markdown -t plain
+        setCommand("pandoc", "--wrap=auto", "--columns=132","-f", "markdown", "-t", "plain");
+        run();
+        return output;
     }
 
     @Override
     public void run() {
-        // Set up the command to run Pandoc
-        setCommand("pandoc", "-f", "markdown", "-t", "html");
 
         // Run the command
         internalRun();

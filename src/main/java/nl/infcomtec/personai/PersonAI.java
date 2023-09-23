@@ -41,6 +41,7 @@ import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
 import nl.infcomtec.simpleimage.Marker;
+import nl.infcomtec.tools.PandocConverter;
 
 public class PersonAI {
 
@@ -70,9 +71,11 @@ public class PersonAI {
     public ClGraph graph = new ClGraph();
     private ImageViewer dotViewer;
     private Vagrant vagrant;
+    private JTextArea userInput;
 
     public PersonAI() throws IOException {
         initGUI();
+        topic.setText(new PandocConverter().convertMarkdownToText132("# no question yet\nEnter a question and press the button."));
         setVisible();
     }
 
@@ -115,19 +118,7 @@ public class PersonAI {
         JPanel main = new JPanel(new BorderLayout());
         dotViewer = new ImageViewer(dot);
         JPanel viewPanel = dotViewer.getScalePanPanel();
-        dot.addListener(new ImageObject.ImageObjectListener("Mouse") {
-            @Override
-            public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-                ClNode node = graph.getNode(e);
-                System.out.println(node.getName() + ": " + node.label);
-                System.out.println(graph.nodeCenters);
-                System.out.println(graph.segments.keySet());
-                Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
-                dotViewer.clearMarkers();
-                dotViewer.addMarker(m);
-                frame.repaint();
-            }
-        });
+        dot.addListener(new GraphMouse("Mouse"));
         main.add(viewPanel, BorderLayout.CENTER);
         JPanel box = new JPanel(new BorderLayout());
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -136,7 +127,7 @@ public class PersonAI {
         box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
         box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
-        JScrollPane inpPan = new JScrollPane(new JTextArea(20, 64));
+        JScrollPane inpPan = new JScrollPane(userInput = new JTextArea(20, 64));
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here:"));
         topic = new JTextArea();
         JScrollPane topPan = new JScrollPane(topic);
@@ -160,7 +151,21 @@ public class PersonAI {
         box.add(new JButton(new AbstractAction("Send to AI/LLM") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-
+                String question = userInput.getText().trim();
+                if ((!question.isEmpty())) {
+                    try {
+                        String answer = OpenAIAPI.makeRequest(null, question);
+                        ClNode node = graph.addNode(new ClNode(graph, "Question", "shape=box"));
+                        node.setUserObj(answer);
+                        BufferedImage render = graph.render();
+                        dot.putImage(render);
+                        graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
+                        topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+                        frame.repaint();
+                    } catch (Exception ex) {
+                        Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
             }
         }), BorderLayout.SOUTH);
         main.add(box, BorderLayout.EAST);
@@ -321,6 +326,26 @@ public class PersonAI {
                     frame.setVisible(true);
                 }
             });
+        }
+    }
+
+    private class GraphMouse extends ImageObject.ImageObjectListener {
+
+        public GraphMouse(String name) {
+            super(name);
+        }
+
+        @Override
+        public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
+            ClNode node = graph.getNode(e);
+            System.out.println(node.getName() + ": " + node.label);
+            System.out.println(graph.nodeCenters);
+            System.out.println(graph.segments.keySet());
+            Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
+            dotViewer.clearMarkers();
+            dotViewer.addMarker(m);
+            topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+            frame.repaint();
         }
     }
 
