@@ -1,11 +1,5 @@
 package nl.infcomtec.simpletree;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -19,6 +13,7 @@ import javax.swing.tree.DefaultTreeModel;
  */
 public class SimpleTree {
 
+    /* Demo usage
     public static void main(String[] args) {
         SimpleTree st = new SimpleTree("Root");
         st.addNode(null, "Child1");
@@ -43,7 +38,7 @@ public class SimpleTree {
         frame.pack();
         frame.setVisible(true);
     }
-
+     */
     private final DefaultMutableTreeNode rootNode;
     private DefaultTreeModel treeModel;
     private JTree tree;
