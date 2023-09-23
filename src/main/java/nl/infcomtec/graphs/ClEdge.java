@@ -39,7 +39,6 @@ public class ClEdge extends ClNode {
             sb.append(", ").append(attributes);
         }
         sb.append("];");
-        System.out.println(sb);
         return sb.toString();
     }
 

@@ -56,10 +56,12 @@ public class ImageViewer {
             marks = new LinkedList<>();
         }
         marks.add(marker);
+        imgObj.putImage(null);
     }
 
     public synchronized void clearMarkers() {
         marks = null;
+        imgObj.putImage(null);
     }
 
     public ImageViewer(File f) {

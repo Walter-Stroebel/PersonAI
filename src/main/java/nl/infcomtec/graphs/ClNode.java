@@ -73,6 +73,10 @@ public class ClNode {
         return id;
     }
 
+    public String getName() {
+        return "N"+id;
+    }
+
     /**
      * Generate the DOT representation for the node.
      *
@@ -92,7 +96,6 @@ public class ClNode {
             sb.append(", ").append(attributes);
         }
         sb.append("];");
-        System.out.println(sb);
         return sb.toString();
     }
 

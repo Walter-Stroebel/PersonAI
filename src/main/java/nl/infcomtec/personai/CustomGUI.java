@@ -38,6 +38,7 @@ import nl.infcomtec.graphs.ClGraph;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
+import nl.infcomtec.simpleimage.Marker;
 
 public class CustomGUI {
 
@@ -51,6 +52,7 @@ public class CustomGUI {
     private Instructions ins;
     private Instruction curIns;
     public ClGraph graph = new ClGraph();
+    private ImageViewer dotViewer;
 
     public CustomGUI() throws IOException {
         try {
@@ -83,13 +85,19 @@ public class CustomGUI {
                     ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
                     graph.clear();
                     ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=diamond"));
-                    ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=ellipse"));
+                    ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
+                    ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
+                    ClNode n4 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
+                    ClNode n5 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
+                    ClNode n6 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
                     graph.addNode(new ClEdge(n1, n2, "", null));
                     graph.addNode(new ClEdge(n2, n3, "", null));
+                    graph.addNode(new ClEdge(n2, n4, "", null));
+                    graph.addNode(new ClEdge(n1, n5, "", null));
+                    graph.addNode(new ClEdge(n5, n6, "", null));
                     BufferedImage render = graph.render();
                     dot.putImage(render);
-                    graph.segments = dot.calculateClosestAreas(graph.nodeCenters.values());
+                    graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
                     frame.repaint();
                 } catch (Exception ex) {
                     Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -118,14 +126,22 @@ public class CustomGUI {
         // Add JTabbedPane to the center
         frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
         JPanel main = new JPanel(new BorderLayout());
-        JPanel dotViewer = new ImageViewer(dot).getScalePanPanel();
+        dotViewer = new ImageViewer(dot);
+        JPanel viewPanel = dotViewer.getScalePanPanel();
         dot.addListener(new ImageObject.ImageObjectListener("Mouse") {
             @Override
             public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-                System.out.println(graph.getNode(e).label);
+                ClNode node = graph.getNode(e);
+                System.out.println(node.getName()+": "+node.label);
+                System.out.println(graph.nodeCenters);
+                System.out.println(graph.segments.keySet());
+                Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
+                dotViewer.clearMarkers();
+                dotViewer.addMarker(m);
+                frame.repaint();
             }
         });
-        main.add(dotViewer, BorderLayout.CENTER);
+        main.add(viewPanel, BorderLayout.CENTER);
         {
             JPanel box = new JPanel(new BorderLayout());
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();

@@ -39,7 +39,9 @@ import java.util.List;
  * @author Walter Stroebel
  */
 public abstract class ToolManager implements Runnable {
+
     private static final String NO_COMMAND_SPECIFIED = "No command specified";
+
     protected static void deleteAll(File fileOrDir) {
         if (fileOrDir.isDirectory()) {
             File[] files = fileOrDir.listFiles();
@@ -76,7 +78,6 @@ public abstract class ToolManager implements Runnable {
         }
     }
 
-
     public void setInput(Object in) {
         if (null != in) {
             if (in instanceof byte[]) {
@@ -107,6 +108,7 @@ public abstract class ToolManager implements Runnable {
     }
 
     protected void internalRun() {
+        long nanos = System.nanoTime();
         if (null == pb) {
             throw new RuntimeException(NO_COMMAND_SPECIFIED);
         }
@@ -172,7 +174,6 @@ public abstract class ToolManager implements Runnable {
                     @Override
                     public void run() {
                         try ( OutputStream os = p.getOutputStream()) {
-                            // System.out.println("Sending " + new String(inBytes));
                             os.write(inBytes);
                             p.getOutputStream().close();
                         } catch (IOException e) {
@@ -190,6 +191,7 @@ public abstract class ToolManager implements Runnable {
             // Wait for stdout and stderr threads to complete
             stdoutThread.join();
             stderrThread.join();
+            System.out.format("%s took %.2f\n", pb.command(), (System.nanoTime() - nanos) / 1e9);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

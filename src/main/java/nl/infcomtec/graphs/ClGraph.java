@@ -36,7 +36,7 @@ public class ClGraph {
     public final AtomicReference<Color> defaultEdgeBackgroundColor = new AtomicReference<>(Color.WHITE);
     private final TreeMap<Integer, ClNode> nodeMap = new TreeMap<>();
     public HashMap<String, Point2D> nodeCenters;
-    public HashMap<Point2D, BitShape> segments;
+    public HashMap<String, BitShape> segments;
 
     public synchronized void clear() {
         nodeMap.clear();
@@ -154,7 +154,6 @@ public class ClGraph {
             try ( BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    System.out.println(line);
                     String[] fields = line.split(" ");
                     if ("graph".equals(fields[0])) {
                         double scale = Double.parseDouble(fields[1]);
