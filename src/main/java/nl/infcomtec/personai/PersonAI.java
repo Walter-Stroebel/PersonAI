@@ -1,5 +1,7 @@
 package nl.infcomtec.personai;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -40,10 +42,23 @@ import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
 import nl.infcomtec.simpleimage.Marker;
 
-public class CustomGUI {
+public class PersonAI {
 
-    public static Font font = new Font(Font.SERIF, Font.PLAIN, 20);
+    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24);
     public static final String osName = System.getProperty("os.name").toLowerCase();
+    public static final File HOME_DIR = new File(System.getProperty("user.home"));
+    public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW");
+    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key");
+    public static void main(String[] args) throws Exception {
+        PersonAI.WORK_DIR.mkdirs(); // in case it doesn't
+        if (!PersonAI.WORK_DIR.exists()) {
+            System.err.println("Cannot access nor create work directory?");
+            System.exit(1);
+        }
+        new PersonAI();
+    }
     public JFrame frame;
     public JToolBar toolBar;
     public JTabbedPane tabbedPane;
@@ -54,7 +69,7 @@ public class CustomGUI {
     public ClGraph graph = new ClGraph();
     private ImageViewer dotViewer;
 
-    public CustomGUI() throws IOException {
+    public PersonAI() throws IOException {
         initGUI();
         setVisible();
     }
@@ -77,7 +92,7 @@ public class CustomGUI {
         try {
             dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
         } catch (IOException ex) {
-            Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
         }
         setFont();
         frame = new JFrame("PersonAI");
@@ -120,12 +135,12 @@ public class CustomGUI {
         box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
         JScrollPane inpPan = new JScrollPane(new JTextArea(20, 64));
-        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
+        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here:"));
         topic = new JTextArea();
         JScrollPane topPan = new JScrollPane(topic);
-        topPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected node:"));
+        topPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
         topPan.setPreferredSize(new Dimension(dm.getWidth(), dm.getHeight() * 30 / 100));
-        ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
+        ins = Instructions.load(new File(WORK_DIR, "instructions.json"), gson);
         pan.add(new JLabel("Pick an operation: "));
         for (final Instruction i : ins.insList) {
             JButton jb = new JButton(new AbstractAction(i.description) {
@@ -178,7 +193,7 @@ public class CustomGUI {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 try {
-                    ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
+                    ins = Instructions.load(new File(PersonAI.WORK_DIR, "instructions.json"), gson);
                     graph.clear();
                     ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
                     ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
@@ -196,14 +211,16 @@ public class CustomGUI {
                     graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
                     frame.repaint();
                 } catch (Exception ex) {
-                    Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }));
         putOnBar(new JButton(new AbstractAction("Clear") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                frame.repaint();
+                frame.dispose();
+                initGUI();
+                setVisible();
             }
         }));
     }

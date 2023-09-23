@@ -195,7 +195,7 @@ public class Server extends Thread {
         }
         {
             ProcessBuilder pb = new ProcessBuilder("vagrant", "up");
-            pb.directory(MiniGW.VAGRANT_DIR);
+            pb.directory(PersonAI.VAGRANT_DIR);
             pb.inheritIO();
             try {
                 Process prc = pb.start();
@@ -210,7 +210,7 @@ public class Server extends Thread {
         }
         try {
             JSch jsch = new JSch();
-            jsch.addIdentity(MiniGW.VAGRANT_KEY.getAbsolutePath());
+            jsch.addIdentity(PersonAI.VAGRANT_KEY.getAbsolutePath());
 
             session = jsch.getSession("vagrant", "localhost", 2222);
 
@@ -232,7 +232,7 @@ public class Server extends Thread {
             public void actionPerformed(ActionEvent ae) {
                 {
                     ProcessBuilder pb = new ProcessBuilder("vagrant", "halt");
-                    pb.directory(MiniGW.VAGRANT_DIR);
+                    pb.directory(PersonAI.VAGRANT_DIR);
                     pb.inheritIO();
                     try {
                         Process prc = pb.start();
