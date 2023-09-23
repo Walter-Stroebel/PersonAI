@@ -18,16 +18,20 @@ public class Instructions {
 
     public List<Instruction> insList;
 
-    public static Instructions load(File file, Gson gson) throws IOException {
+    public static Instructions load(File file, Gson gson) {
         if (file.exists()) {
             try ( FileReader fr = new FileReader(file)) {
                 return gson.fromJson(fr, Instructions.class);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
         } else {
             try ( InputStreamReader isr = new InputStreamReader(Instructions.class.getResourceAsStream("/instructions.json"))) {
                 Instructions ret = gson.fromJson(isr, Instructions.class);
                 ret.save(file, gson);
                 return ret;
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
         }
     }

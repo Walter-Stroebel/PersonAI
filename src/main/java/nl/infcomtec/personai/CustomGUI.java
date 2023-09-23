@@ -42,11 +42,11 @@ import nl.infcomtec.simpleimage.Marker;
 
 public class CustomGUI {
 
-    public static final Font font = new Font(Font.SERIF, Font.PLAIN, 24); // TODO make adjustable
+    public static Font font = new Font(Font.SERIF, Font.PLAIN, 20);
     public static final String osName = System.getProperty("os.name").toLowerCase();
-    public final JFrame frame;
-    public final JToolBar toolBar;
-    public final JTabbedPane tabbedPane;
+    public JFrame frame;
+    public JToolBar toolBar;
+    public JTabbedPane tabbedPane;
     public ImageObject dot;
     private JTextArea topic;
     private Instructions ins;
@@ -55,12 +55,15 @@ public class CustomGUI {
     private ImageViewer dotViewer;
 
     public CustomGUI() throws IOException {
-        try {
-            dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
-        } catch (IOException ex) {
-            Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        initGUI();
+        setVisible();
+    }
+
+    private void setFont() {
         try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
+            if (null != frame) {
+                frame.dispose();
+            }
             for (String key = bfr.readLine(); null != key; key = bfr.readLine()) {
                 UIManager.put(key, font);
             }
@@ -68,14 +71,107 @@ public class CustomGUI {
             // we tried ... might not be fatal
             System.err.println(ex.getMessage());
         }
-        frame = new JFrame("Custom GUI");
+    }
+
+    private void initGUI() {
+        try {
+            dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
+        } catch (IOException ex) {
+            Logger.getLogger(CustomGUI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        setFont();
+        frame = new JFrame("PersonAI");
         toolBar = new JToolBar();
         tabbedPane = new JTabbedPane();
-        initGUI();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
+
+        // Maximize and set always on top
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        frame.setAlwaysOnTop(true);
+
+        // Add JToolBar to the north
+        frame.getContentPane().add(toolBar, BorderLayout.NORTH);
+
+        // Add JTabbedPane to the center
+        frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        JPanel main = new JPanel(new BorderLayout());
+        dotViewer = new ImageViewer(dot);
+        JPanel viewPanel = dotViewer.getScalePanPanel();
+        dot.addListener(new ImageObject.ImageObjectListener("Mouse") {
+            @Override
+            public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
+                ClNode node = graph.getNode(e);
+                System.out.println(node.getName() + ": " + node.label);
+                System.out.println(graph.nodeCenters);
+                System.out.println(graph.segments.keySet());
+                Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
+                dotViewer.clearMarkers();
+                dotViewer.addMarker(m);
+                frame.repaint();
+            }
+        });
+        main.add(viewPanel, BorderLayout.CENTER);
+        JPanel box = new JPanel(new BorderLayout());
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
+        DisplayMode dm = defaultScreen.getDisplayMode();
+        box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+        box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
+        JPanel pan = new JPanel(new FlowLayout());
+        JScrollPane inpPan = new JScrollPane(new JTextArea(20, 64));
+        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
+        topic = new JTextArea();
+        JScrollPane topPan = new JScrollPane(topic);
+        topPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected node:"));
+        topPan.setPreferredSize(new Dimension(dm.getWidth(), dm.getHeight() * 30 / 100));
+        ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
+        pan.add(new JLabel("Pick an operation: "));
+        for (final Instruction i : ins.insList) {
+            JButton jb = new JButton(new AbstractAction(i.description) {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    curIns = i;
+                }
+            });
+            jb.setToolTipText(i.prompt);
+            pan.add(jb);
+        }
+        box.add(pan, BorderLayout.CENTER);
+        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
+        box.add(inpPan, BorderLayout.NORTH);
+        box.add(new JButton(new AbstractAction("Send to AI/LLM") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+
+            }
+        }), BorderLayout.SOUTH);
+        main.add(box, BorderLayout.EAST);
+        main.add(topPan, BorderLayout.SOUTH);
+        tabbedPane.addTab("Main", main);
+        tabbedPane.addTab("Tab 2", new JPanel());
         putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 System.exit(0);
+            }
+        }));
+        putOnBar(new JButton(new AbstractAction("Bigger text") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                font = new Font(font.getName(), font.getStyle(), font.getSize() + 1);
+                initGUI();
+                setVisible();
+            }
+        }));
+        putOnBar(new JButton(new AbstractAction("Smaller text") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                if (font.getSize() > 6) {
+                    font = new Font(font.getName(), font.getStyle(), font.getSize() - 1);
+                    initGUI();
+                    setVisible();
+                }
             }
         }));
         putOnBar(new JButton(new AbstractAction("Load") {
@@ -110,78 +206,6 @@ public class CustomGUI {
                 frame.repaint();
             }
         }));
-    }
-
-    private void initGUI() throws IOException {
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new BorderLayout());
-
-        // Maximize and set always on top
-        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        frame.setAlwaysOnTop(true);
-
-        // Add JToolBar to the north
-        frame.getContentPane().add(toolBar, BorderLayout.NORTH);
-
-        // Add JTabbedPane to the center
-        frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-        JPanel main = new JPanel(new BorderLayout());
-        dotViewer = new ImageViewer(dot);
-        JPanel viewPanel = dotViewer.getScalePanPanel();
-        dot.addListener(new ImageObject.ImageObjectListener("Mouse") {
-            @Override
-            public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-                ClNode node = graph.getNode(e);
-                System.out.println(node.getName()+": "+node.label);
-                System.out.println(graph.nodeCenters);
-                System.out.println(graph.segments.keySet());
-                Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
-                dotViewer.clearMarkers();
-                dotViewer.addMarker(m);
-                frame.repaint();
-            }
-        });
-        main.add(viewPanel, BorderLayout.CENTER);
-        {
-            JPanel box = new JPanel(new BorderLayout());
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
-            DisplayMode dm = defaultScreen.getDisplayMode();
-            box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
-            box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
-            JPanel pan = new JPanel(new FlowLayout());
-            JScrollPane inpPan = new JScrollPane(new JTextArea());
-            inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
-            topic = new JTextArea();
-            JScrollPane topPan = new JScrollPane(topic);
-            topPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected node:"));
-            topPan.setPreferredSize(new Dimension(dm.getWidth(), dm.getHeight() * 30 / 100));
-            ins = Instructions.load(new File(MiniGW.WORK_DIR, "instructions.json"), MiniGW.gson);
-            pan.add(new JLabel("Pick an operation: "));
-            for (final Instruction i : ins.insList) {
-                JButton jb = new JButton(new AbstractAction(i.description) {
-                    @Override
-                    public void actionPerformed(ActionEvent ae) {
-                        curIns = i;
-                    }
-                });
-                jb.setToolTipText(i.prompt);
-                pan.add(jb);
-            }
-            box.add(pan, BorderLayout.CENTER);
-            inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
-            box.add(inpPan, BorderLayout.NORTH);
-            box.add(new JButton(new AbstractAction("Ask the chat") {
-                @Override
-                public void actionPerformed(ActionEvent ae) {
-
-                }
-            }), BorderLayout.SOUTH);
-            main.add(box, BorderLayout.EAST);
-            main.add(topPan, BorderLayout.SOUTH);
-        }
-        tabbedPane.addTab("Main", main);
-        tabbedPane.addTab("Tab 2", new JPanel());
     }
 
     public final synchronized void putOnBar(Component component) {
@@ -224,7 +248,7 @@ public class CustomGUI {
         }
     }
 
-    public void setVisible() {
+    public final void setVisible() {
         if (EventQueue.isDispatchThread()) {
             frame.setVisible(true);
         } else {
