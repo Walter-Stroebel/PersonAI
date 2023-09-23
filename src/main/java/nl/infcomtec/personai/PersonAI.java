@@ -226,10 +226,14 @@ public class PersonAI {
         putOnBar(new JButton(new AbstractAction("Start Vagrant") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                new Server();
+                if (null!=vagrant){
+                    vagrant.stop();
+                }
+                vagrant=new Vagrant();
             }
         }));
     }
+            private Vagrant vagrant;
 
     public final synchronized void putOnBar(Component component) {
         getCompName(component); // test

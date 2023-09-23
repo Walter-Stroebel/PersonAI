@@ -29,7 +29,7 @@ import java.util.List;
  *    public Image convert (Image in, String fromFormat, String toFormat){
  *      // build command line, set working dir and provide input if any
  *    }
- *    public voif run(){
+ *    public void run(){
  *      internalRun();
  *      // handle the result(s)
  *    }
