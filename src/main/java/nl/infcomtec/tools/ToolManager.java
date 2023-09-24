@@ -12,6 +12,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/*!
+ *  Usage example.
+ *  
+ *  \code
+ *  public class Convert extends ToolManager {
+ *      public Image convert (Image in, String fromFormat, String toFormat){
+ *          // build command line, set working dir and provide input if any
+ *      }
+ *      public void run(){
+ *          internalRun();
+ *          // handle the result(s)
+ *      }
+ *  }
+ *  \endcode
+ *  
+ */
+
 /**
  * Management class for using external system utilities.
  *
@@ -35,7 +52,6 @@ import java.util.List;
  *    }
  * }
  * </pre>
- *
  * @author Walter Stroebel
  */
 public abstract class ToolManager implements Runnable {
