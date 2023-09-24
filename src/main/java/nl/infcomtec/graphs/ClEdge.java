@@ -11,16 +11,18 @@ public class ClEdge extends ClNode {
     public final ClNode fromNode;
     public final ClNode toNode;
 
-    public ClEdge(ClNode from, ClNode to, String label, Color fgColor, Color bgColor, String extraAttributes) {
-        super(from.graph, label, fgColor, bgColor, extraAttributes);
+    public ClEdge(ClNode from, ClNode to, String label, Color fgColor, Color bgColor) {
+        super(from.graph, label, fgColor, bgColor);
         this.fromNode = from;
         this.toNode = to;
+        shape="edge";
     }
 
-    public ClEdge(ClNode from, ClNode to, String label, String extraAttributes) {
-        super(from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get(), extraAttributes);
+    public ClEdge(ClNode from, ClNode to, String label) {
+        super(from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
         this.fromNode = from;
         this.toNode = to;
+        shape="edge";
     }
 
     @Override
@@ -35,9 +37,6 @@ public class ClEdge extends ClNode {
                 .append(", fillcolor=").append(ClGraph.dotColor(backColor))
                 .append(", fontcolor=").append(ClGraph.dotColor(foreColor));
 
-        if (attributes != null && !attributes.isEmpty()) {
-            sb.append(", ").append(attributes);
-        }
         sb.append("];");
         return sb.toString();
     }

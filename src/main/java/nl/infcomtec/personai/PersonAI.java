@@ -75,7 +75,10 @@ public class PersonAI {
 
     public PersonAI() throws IOException {
         initGUI();
-        topic.setText(new PandocConverter().convertMarkdownToText132("# no question yet\nEnter a question and press the button."));
+        topic.setText(new PandocConverter().convertMarkdownToText132(
+                "# No question yet\n"
+                + "Enter a question and press the button.\n"
+                + "_This is still a WIP!_"));
         setVisible();
     }
 
@@ -155,7 +158,7 @@ public class PersonAI {
                 if ((!question.isEmpty())) {
                     try {
                         String answer = OpenAIAPI.makeRequest(null, question);
-                        ClNode node = graph.addNode(new ClNode(graph, "Question", "shape=box"));
+                        ClNode node = graph.addNode(new ClNode(graph, "Question").withShape("box"));
                         node.setUserObj(answer);
                         BufferedImage render = graph.render();
                         dot.putImage(render);
@@ -199,27 +202,19 @@ public class PersonAI {
         putOnBar(new JButton(new AbstractAction("Load") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                try {
-                    ins = Instructions.load(new File(PersonAI.WORK_DIR, "instructions.json"), gson);
-                    graph.clear();
-                    ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n4 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n5 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    ClNode n6 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString(), "shape=box"));
-                    graph.addNode(new ClEdge(n1, n2, "", null));
-                    graph.addNode(new ClEdge(n2, n3, "", null));
-                    graph.addNode(new ClEdge(n2, n4, "", null));
-                    graph.addNode(new ClEdge(n1, n5, "", null));
-                    graph.addNode(new ClEdge(n5, n6, "", null));
-                    BufferedImage render = graph.render();
-                    dot.putImage(render);
-                    graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
-                    frame.repaint();
-                } catch (Exception ex) {
-                    Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
-                }
+                graph.clear();
+                ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                ClNode n4 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                ClNode n5 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                ClNode n6 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
+                graph.addNode(new ClEdge(n1, n2, ""));
+                graph.addNode(new ClEdge(n2, n3, ""));
+                graph.addNode(new ClEdge(n2, n4, ""));
+                graph.addNode(new ClEdge(n1, n5, ""));
+                graph.addNode(new ClEdge(n5, n6, ""));
+                rebuild();
             }
         }));
         putOnBar(new JButton(new AbstractAction("Clear") {
@@ -264,15 +259,32 @@ public class PersonAI {
         }));
     }
 
-    private void setTabText(String title, String log) {
+    private void rebuild() {
+        try {
+            ins = Instructions.load(new File(PersonAI.WORK_DIR, "instructions.json"), gson);
+            BufferedImage render = graph.render();
+            dot.putImage(render);
+            graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
+            frame.repaint();
+        } catch (Exception ex) {
+            Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void setTabText(String title, String text) {
+        JScrollPane pane = new JScrollPane(new JTextArea(text));
+        setTab(title, pane);
+    }
+
+    private void setTab(String title, Component comp) {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
-            if (tabbedPane.getTitleAt(i).endsWith(title)) {
-                tabbedPane.setComponentAt(i, new JScrollPane(new JTextArea(log)));
+            if (tabbedPane.getTitleAt(i).equals(title)) {
+                tabbedPane.setComponentAt(i, comp);
                 tabbedPane.setSelectedIndex(i);
                 return;
             }
         }
-        tabbedPane.add(title, new JScrollPane(new JTextArea(log)));
+        tabbedPane.add(title, comp);
         tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
     }
 
@@ -329,6 +341,21 @@ public class PersonAI {
         }
     }
 
+    private void addReplaceTab(ClNode node) {
+        NodePanel panel = new NodePanel(node, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                frame.repaint();
+            }
+        },new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                rebuild();
+            }
+        });
+        setTab(node.label, panel);
+    }
+
     private class GraphMouse extends ImageObject.ImageObjectListener {
 
         public GraphMouse(String name) {
@@ -345,6 +372,7 @@ public class PersonAI {
             dotViewer.clearMarkers();
             dotViewer.addMarker(m);
             topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+            addReplaceTab(node);
             frame.repaint();
         }
     }

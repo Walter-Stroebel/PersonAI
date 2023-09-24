@@ -10,11 +10,11 @@ import java.awt.Color;
 public class ClNode {
 
     public String label;
-    public String attributes;
     public final int id;
     protected final ClGraph graph;
     protected final Color foreColor;
     protected final Color backColor;
+    protected String shape="ellipse";
     private Object userObj;
 
     /**
@@ -24,16 +24,27 @@ public class ClNode {
      * @param label Label for the node.
      * @param fgColor Original foreground color.
      * @param bgColor Original background color.
-     * @param extraAttributes Map containing any extra GraphViz attributes.
      */
-    public ClNode(ClGraph graph, String label, Color fgColor, Color bgColor, String extraAttributes) {
+    public ClNode(ClGraph graph, String label, Color fgColor, Color bgColor) {
         this.label = label;
         this.foreColor = fgColor;
         this.backColor = bgColor;
-        this.attributes = extraAttributes;
         this.graph = graph;
         id = graph.genId();
         graph.addNode(this);
+    }
+
+    public String getShape() {
+        return shape;
+    }
+
+    public void setShape(String shape) {
+        this.shape=shape;
+    }
+
+    public ClNode withShape(String shape) {
+        this.shape=shape;
+        return this;
     }
 
     @Override
@@ -63,10 +74,9 @@ public class ClNode {
      *
      * @param graph Owning graph.
      * @param label Label for the node.
-     * @param extraAttributes Map containing any extra Graphviz attributes.
      */
-    public ClNode(ClGraph graph, String label, String extraAttributes) {
-        this(graph, label, graph.defaultNodeForegroundColor.get(), graph.defaultNodeBackgroundColor.get(), extraAttributes);
+    public ClNode(ClGraph graph, String label) {
+        this(graph, label, graph.defaultNodeForegroundColor.get(), graph.defaultNodeBackgroundColor.get());
     }
 
     public int getId() {
@@ -74,7 +84,7 @@ public class ClNode {
     }
 
     public String getName() {
-        return "N"+id;
+        return "N" + id;
     }
 
     /**
@@ -92,13 +102,12 @@ public class ClNode {
                 .append(", fillcolor=").append(ClGraph.dotColor(backColor))
                 .append(", fontcolor=").append(ClGraph.dotColor(foreColor));
 
-        if (attributes != null && !attributes.isEmpty()) {
-            sb.append(", ").append(attributes);
+        if (shape != null && !shape.isEmpty()) {
+            sb.append(", shape=").append(shape);
         }
         sb.append("];");
         return sb.toString();
     }
-
 
     /**
      * @return the userObj
