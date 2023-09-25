@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -80,7 +81,10 @@ public class OpenAIAPI {
      * @throws IOException if something failed.
      */
     public static String makeRequest(List<Message> messages) throws IOException {
-        OkHttpClient client = new OkHttpClient();
+        long start=System.currentTimeMillis();
+        try {
+        OkHttpClient.Builder builder=new OkHttpClient.Builder().callTimeout(30,TimeUnit.SECONDS);
+        OkHttpClient client = builder.build();
         JsonObject messageJson = new JsonObject();
         messageJson.addProperty("model", "gpt-3.5-turbo-16k");
         JsonArray messageArray = new JsonArray();
@@ -111,7 +115,12 @@ public class OpenAIAPI {
                 // nobody wants them I guess
                 usages.clear();
             }
+            System.out.format("Request duration was %.3f seconds\n",(System.currentTimeMillis()-start)/1000.0);
             return jsonResponse.getAsJsonArray("choices").get(0).getAsJsonObject().get("message").getAsJsonObject().get("content").getAsString();
+        }
+        } catch (IOException ex){
+            System.out.format("Request failed after %.3f seconds\n",(System.currentTimeMillis()-start)/1000.0);
+            throw new IOException(ex.getMessage());
         }
     }
 }

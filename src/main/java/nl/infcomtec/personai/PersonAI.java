@@ -140,13 +140,9 @@ public class PersonAI {
         tabbedPane = new JTabbedPane();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
-
-        // Maximize and set always on top
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-
         // Add JToolBar to the north
         frame.getContentPane().add(toolBar, BorderLayout.NORTH);
-
         // Add JTabbedPane to the center
         frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
         JPanel main = new JPanel(new BorderLayout());
@@ -162,6 +158,8 @@ public class PersonAI {
         box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
         JScrollPane inpPan = new JScrollPane(userInput = new JTextArea(20, 64));
+        userInput.setLineWrap(true);
+        userInput.setWrapStyleWord(true);
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
                 "Type a message here:"));
         topic = new JTextArea();
@@ -579,7 +577,7 @@ public class PersonAI {
                         progressMsg.setText(failure.getMessage());
                     }
                 });
-                Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, failure);
+//                Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, failure);
             } else {
                 // Handle successful completion and update the UI accordingly
             }
