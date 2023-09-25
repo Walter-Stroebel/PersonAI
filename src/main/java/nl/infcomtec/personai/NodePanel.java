@@ -38,7 +38,7 @@ public class NodePanel extends javax.swing.JPanel {
     /**
      * This method is called from within the constructor to initialize the form.
      */
-    @SuppressWarnings("unchecked")
+
     private void initComponents() {
 
         jScrollPane1 = new javax.swing.JScrollPane();

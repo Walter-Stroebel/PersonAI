@@ -103,7 +103,6 @@ public class OpenAIAPI {
             if (null == response.body()) {
                 throw new IOException("Null body " + response);
             }
-            @SuppressWarnings("null")
             String responseBody = response.body().string();
             JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
             usages.add(new Usage(jsonResponse.getAsJsonObject("usage")));

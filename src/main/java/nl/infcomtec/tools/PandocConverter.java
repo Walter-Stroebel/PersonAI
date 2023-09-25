@@ -33,7 +33,7 @@ public class PandocConverter extends ToolManager {
         if (exitCode != 0) {
             output = "Running pandoc failed, rc=" + exitCode;
         } else {
-            ByteArrayOutputStream str;
+
             if (stdoutStream instanceof ByteArrayOutputStream) {
                 output = new String(((ByteArrayOutputStream) stdoutStream).toByteArray(), StandardCharsets.UTF_8);
             }

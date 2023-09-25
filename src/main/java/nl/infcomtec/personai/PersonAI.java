@@ -32,6 +32,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
@@ -54,13 +55,22 @@ import nl.infcomtec.tools.PandocConverter;
  */
 public class PersonAI {
 
-    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24); ///< This is the base of all scaling code.
-    public static final String osName = System.getProperty("os.name").toLowerCase(); ///< Use this if you encounter OS specific issues
+    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24); /// < This is the base of all scaling code.
+    public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS
+                                                                                     /// specific issues
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
-    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); ///< A central way to configure GSon
-    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); ///< This might vary on another OS.
-    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); ///< This might vary on another OS.
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure
+                                                                                    /// GSon
+    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on
+                                                                                          /// another OS.
+    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); /// <
+                                                                                                                      /// This
+                                                                                                                      /// might
+                                                                                                                      /// vary
+                                                                                                                      /// on
+                                                                                                                      /// another
+                                                                                                                      /// OS.
     public final static AtomicInteger totalPromptTokens = new AtomicInteger();
     public final static AtomicInteger totalOutputTokens = new AtomicInteger();
     public final static double ITC = 0.003 / 1000;
@@ -81,6 +91,7 @@ public class PersonAI {
         }
         new PersonAI();
     }
+
     public JFrame frame;
     public JToolBar toolBar;
     public JTabbedPane tabbedPane;
@@ -99,13 +110,14 @@ public class PersonAI {
         initGUI();
         topic.setText(new PandocConverter().convertMarkdownToText132(
                 "# No question yet\n"
-                + "Enter a question and press the button.\n"
-                + "_This is still a WIP!_"));
+                        + "Enter a question and press the button.\n"
+                        + "_This is still a WIP!_"));
         setVisible();
     }
 
     private void setFont() {
-        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
+        try (BufferedReader bfr = new BufferedReader(
+                new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
             if (null != frame) {
                 frame.dispose();
             }
@@ -134,8 +146,7 @@ public class PersonAI {
 
         // Maximize and set always on top
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        frame.setAlwaysOnTop(true);
-
+      
         // Add JToolBar to the north
         frame.getContentPane().add(toolBar, BorderLayout.NORTH);
 
@@ -154,10 +165,12 @@ public class PersonAI {
         box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
         JScrollPane inpPan = new JScrollPane(userInput = new JTextArea(20, 64));
-        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here:"));
+        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
+                "Type a message here:"));
         topic = new JTextArea();
         JScrollPane topPan = new JScrollPane(topic);
-        topPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
+        topPan.setBorder(
+                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
         topPan.setPreferredSize(new Dimension(dm.getWidth(), dm.getHeight() * 30 / 100));
         ins = Instructions.load(new File(WORK_DIR, "instructions.json"), gson);
         pan.add(new JLabel("Pick an operation: "));
@@ -165,6 +178,10 @@ public class PersonAI {
             JButton jb = new JButton(new AbstractAction(i.description) {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
+                    if (selectedNodes.isEmpty()) {
+                        JOptionPane.showMessageDialog(frame, "Please select a node first.");
+                        return;
+                    }
                     curIns = i;
                 }
             });
@@ -172,7 +189,8 @@ public class PersonAI {
             pan.add(jb);
         }
         box.add(pan, BorderLayout.CENTER);
-        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
+        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
+                "Type a message here (optional):"));
         box.add(inpPan, BorderLayout.NORTH);
         // XXX Commit / send button
         box.add(new JButton(new AbstractAction("Send to AI/LLM") {
@@ -187,15 +205,17 @@ public class PersonAI {
                     try {
                         String answer;
                         if (null != curIns) {
-                            answer = OpenAIAPI.makeRequest(new Message[]{
-                                new Message(Message.ROLES.system, "You are being used with a tree-of-thought tool. The following are previous messages and an instruction."),
-                                new Message(Message.ROLES.user, curIns.prompt),
-                                new Message(Message.ROLES.assistant, question)
+                            answer = OpenAIAPI.makeRequest(new Message[] {
+                                    new Message(Message.ROLES.system,
+                                            "You are being used with a tree-of-thought tool. The following are previous messages and an instruction."),
+                                    new Message(Message.ROLES.user, curIns.prompt),
+                                    new Message(Message.ROLES.assistant, question)
                             });
                         } else {
                             answer = OpenAIAPI.makeRequest(null, question);
                         }
-                        String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
+                        String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.",
+                                answer);
                         selectedNodes.clear();
                         userInput.setText("");
                         // XXX cost calculation
