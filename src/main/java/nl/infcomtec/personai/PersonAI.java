@@ -34,11 +34,13 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClGraph;
@@ -56,25 +58,18 @@ import nl.infcomtec.tools.PandocConverter;
 public class PersonAI {
 
     public static Font font = new Font(Font.SERIF, Font.PLAIN, 24); /// < This is the base of all scaling code.
-    public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS
-                                                                                     /// specific issues
+    public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS specific issues.
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
-    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure
-                                                                                    /// GSon
-    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on
-                                                                                          /// another OS.
-    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); /// <
-                                                                                                                      /// This
-                                                                                                                      /// might
-                                                                                                                      /// vary
-                                                                                                                      /// on
-                                                                                                                      /// another
-                                                                                                                      /// OS.
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure GSon.
+    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on another OS.
+    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); /// < This might vary on another OS.
     public final static AtomicInteger totalPromptTokens = new AtomicInteger();
     public final static AtomicInteger totalOutputTokens = new AtomicInteger();
     public final static double ITC = 0.003 / 1000;
     public final static double OTC = 0.004 / 1000;
+    private static final String EOLN = System.lineSeparator();
+    private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
 
     /**
      * Starting point.
@@ -105,18 +100,21 @@ public class PersonAI {
     private JTextArea userInput;
     private final TreeSet<String> selectedNodes = new TreeSet<>();
     private ClNode insNode;
+    private JLabel costLabel;
+    private JProgressBar progressBar;
+    private JTextArea progressMsg;
 
     public PersonAI() throws IOException {
         initGUI();
         topic.setText(new PandocConverter().convertMarkdownToText132(
                 "# No question yet\n"
-                        + "Enter a question and press the button.\n"
-                        + "_This is still a WIP!_"));
+                + "Enter a question and press the button.\n"
+                + "_This is still a WIP!_"));
         setVisible();
     }
 
     private void setFont() {
-        try (BufferedReader bfr = new BufferedReader(
+        try ( BufferedReader bfr = new BufferedReader(
                 new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
             if (null != frame) {
                 frame.dispose();
@@ -131,7 +129,6 @@ public class PersonAI {
     }
 
     private void initGUI() {
-        // XXX main display tab
         try {
             dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
         } catch (IOException ex) {
@@ -146,7 +143,7 @@ public class PersonAI {
 
         // Maximize and set always on top
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-      
+
         // Add JToolBar to the north
         frame.getContentPane().add(toolBar, BorderLayout.NORTH);
 
@@ -168,10 +165,7 @@ public class PersonAI {
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
                 "Type a message here:"));
         topic = new JTextArea();
-        JScrollPane topPan = new JScrollPane(topic);
-        topPan.setBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
-        topPan.setPreferredSize(new Dimension(dm.getWidth(), dm.getHeight() * 30 / 100));
+        JPanel south = buildSouthPanel(dm);
         ins = Instructions.load(new File(WORK_DIR, "instructions.json"), gson);
         pan.add(new JLabel("Pick an operation: "));
         for (final Instruction i : ins.insList) {
@@ -192,72 +186,39 @@ public class PersonAI {
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
                 "Type a message here (optional):"));
         box.add(inpPan, BorderLayout.NORTH);
-        // XXX Commit / send button
-        box.add(new JButton(new AbstractAction("Send to AI/LLM") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                StringBuilder sb = new StringBuilder(userInput.getText().trim());
-                for (String k : selectedNodes) {
-                    sb.append(graph.getNode(k).getUserStr()).append(System.lineSeparator());
-                }
-                String question = sb.toString().trim();
-                if ((!question.isEmpty())) {
-                    try {
-                        String answer;
-                        if (null != curIns) {
-                            answer = OpenAIAPI.makeRequest(new Message[] {
-                                    new Message(Message.ROLES.system,
-                                            "You are being used with a tree-of-thought tool. The following are previous messages and an instruction."),
-                                    new Message(Message.ROLES.user, curIns.prompt),
-                                    new Message(Message.ROLES.assistant, question)
-                            });
-                        } else {
-                            answer = OpenAIAPI.makeRequest(null, question);
-                        }
-                        String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.",
-                                answer);
-                        selectedNodes.clear();
-                        userInput.setText("");
-                        // XXX cost calculation
-                        for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
-                            Usage us = it.next();
-                            it.remove();
-                            totalPromptTokens.addAndGet(us.promptTokens);
-                            totalOutputTokens.addAndGet(us.completionTokens);
-                        }
-                        System.out.format("Cost: %.2f + %.2f = %3$.2f (%3$f)\n",
-                                totalPromptTokens.get() * ITC,
-                                totalOutputTokens.get() * OTC,
-                                totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC);
-                        ClNode q;
-                        if (null == insNode) {
-                            q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
-                        } else {
-                            if (null != curIns) {
-                                q = graph.addNode(new ClNode(graph, curIns.description).withShape("diamond"));
-                            } else {
-                                q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
-                            }
-                        }
-                        q.setUserObj(question);
-                        ClNode a = graph.addNode(new ClNode(graph, tagLine).withShape("box"));
-                        a.setUserObj(answer);
-                        graph.addNode(new ClEdge(q, a, "answer"));
-                        BufferedImage render = graph.render();
-                        dot.putImage(render);
-                        graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
-                        topic.setText(new PandocConverter().convertMarkdownToText132(a.getUserStr()));
-                        frame.repaint();
-                    } catch (Exception ex) {
-                        Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-            }
-        }), BorderLayout.SOUTH);
+        box.add(new JButton(new SubmitAction("Send to AI/LLM")), BorderLayout.SOUTH);
         main.add(box, BorderLayout.EAST);
-        main.add(topPan, BorderLayout.SOUTH);
+        main.add(south, BorderLayout.SOUTH);
         tabbedPane.addTab("Main", main);
-        // XXX note: main page toolbar buttons
+        addButtons();
+    }
+
+    private JPanel buildSouthPanel(DisplayMode dm) {
+        JPanel south = new JPanel(new BorderLayout());
+        {
+            JScrollPane topPan = new JScrollPane(topic);
+            topPan.setBorder(
+                    BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
+            topPan.setPreferredSize(new Dimension(dm.getWidth() * 70 / 100, dm.getHeight() * 30 / 100));
+            south.add(topPan, BorderLayout.CENTER);
+            JPanel statusPanel = new JPanel(new BorderLayout());
+            statusPanel.setPreferredSize(new Dimension(dm.getWidth() * 30 / 100, dm.getHeight() * 30 / 100));
+            statusPanel.setBorder(
+                    BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Status"));
+            progressBar = new JProgressBar(JProgressBar.HORIZONTAL, 0, 3);
+            progressMsg = new JTextArea("");
+            costLabel = new JLabel("Cost: $0.00");
+
+            statusPanel.add(progressBar, BorderLayout.NORTH);
+            statusPanel.add(new JScrollPane(progressMsg), BorderLayout.CENTER);
+            statusPanel.add(costLabel, BorderLayout.SOUTH);
+
+            south.add(statusPanel, BorderLayout.EAST);
+        }
+        return south;
+    }
+
+    private void addButtons() {
         putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -478,6 +439,150 @@ public class PersonAI {
                 }
             }
             frame.repaint();
+        }
+    }
+
+    private class SubmitAction extends AbstractAction {
+
+        public SubmitAction(String name) {
+            super(name);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            StringBuilder sb = new StringBuilder(userInput.getText().trim());
+            for (String k : selectedNodes) {
+                sb.append(EOLN);
+                sb.append(graph.getNode(k).getUserStr());
+            }
+            String question = sb.toString().trim();
+            if ((!question.isEmpty())) {
+                progressBar.setIndeterminate(true); // Sets the progress bar to indeterminate while processing
+                progressMsg.setText("");
+                ApiRequestWorker worker = new ApiRequestWorker(question);
+                worker.execute();
+            }
+        }
+    }
+
+    private class ApiRequestWorker extends SwingWorker<String, String> {
+
+        private final String question;
+        private Exception failure;
+        private final StringBuilder lastInteraction = new StringBuilder();
+
+        public ApiRequestWorker(String question) {
+            this.question = question;
+        }
+
+        @Override
+        protected String doInBackground() {
+            publish("1:Sending question to LLM");
+            try {
+                String answer;
+                if (null != curIns) {
+                    synchronized (lastInteraction) {
+                        lastInteraction.append("SYSTEM: ").append(ToT_SYSTEM).append(EOLN);
+                        lastInteraction.append("QUESTION: ").append(curIns.prompt).append(EOLN);
+                        lastInteraction.append("TEXT: ").append(question).append(EOLN);
+                    }
+                    answer = OpenAIAPI.makeRequest(new Message[]{
+                        new Message(Message.ROLES.system, ToT_SYSTEM),
+                        new Message(Message.ROLES.user, curIns.prompt),
+                        new Message(Message.ROLES.assistant, question)
+                    });
+                } else {
+                    lastInteraction.append("TEXT: ").append(question).append(EOLN);
+                    answer = OpenAIAPI.makeRequest(null, question);
+                }
+                synchronized (lastInteraction) {
+                    lastInteraction.append(answer).append(EOLN);
+                }
+                publish("2:Asking LLM for tagline");
+                String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
+                selectedNodes.clear();
+                userInput.setText("");
+                // XXX cost calculation
+                for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
+                    Usage us = it.next();
+                    it.remove();
+                    totalPromptTokens.addAndGet(us.promptTokens);
+                    totalOutputTokens.addAndGet(us.completionTokens);
+                }
+                System.out.format("Cost: %.2f + %.2f = %3$.2f (%3$f)\n",
+                        totalPromptTokens.get() * ITC,
+                        totalOutputTokens.get() * OTC,
+                        totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC);
+                double cost = totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC;
+                costLabel.setText(String.format("Cost: $%.2f", cost));
+                synchronized (lastInteraction) {
+                    lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
+                }
+                publish("3:Rebuilding graph");
+                ClNode q;
+                if (null == insNode) {
+                    q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
+                } else {
+                    if (null != curIns) {
+                        q = graph.addNode(new ClNode(graph, curIns.description).withShape("diamond"));
+                    } else {
+                        q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
+                    }
+                }
+                q.setUserObj(question);
+                ClNode a = graph.addNode(new ClNode(graph, tagLine).withShape("box"));
+                a.setUserObj(answer);
+                graph.addNode(new ClEdge(q, a, "answer"));
+                if (null != insNode) {
+                    graph.addNode(new ClEdge(insNode, q, "question"));
+                }
+                BufferedImage render = graph.render();
+                dot.putImage(render);
+                graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
+                topic.setText(new PandocConverter().convertMarkdownToText132(a.getUserStr()));
+                publish("0:Ready for next question");
+                frame.repaint();
+            } catch (Exception e) {
+                this.failure = e;
+            }
+
+            return "";
+        }
+
+        @Override
+        protected void process(List<String> chunks) {
+            synchronized (lastInteraction) {
+                setTabText("Last Interaction", lastInteraction.toString());
+                tabbedPane.setSelectedIndex(0);
+            }
+            for (String msg : chunks) {
+                if (msg.indexOf(':') == 1) {
+                    progressMsg.append(EOLN);
+                    progressMsg.append(msg.substring(2));
+                    progressBar.setIndeterminate(false);
+                    progressBar.setValue(Integer.parseInt(msg.substring(0, 1)));
+                } else {
+                    progressMsg.append(EOLN);
+                    progressMsg.append(msg);
+                    progressBar.setIndeterminate(true);
+                }
+            }
+        }
+
+        @Override
+        protected void done() {
+            if (failure != null) {
+                // If an exception occurred, update the status message
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressMsg.setText(failure.getMessage());
+                    }
+                });
+                Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, failure);
+            } else {
+                // Handle successful completion and update the UI accordingly
+            }
         }
     }
 
