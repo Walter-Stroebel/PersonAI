@@ -26,7 +26,7 @@ public class ClNode {
      * @param bgColor Original background color.
      */
     public ClNode(ClGraph graph, String label, Color fgColor, Color bgColor) {
-        this.label = label;
+        this.label = label.replace('"', '\'');
         this.foreColor = fgColor;
         this.backColor = bgColor;
         this.graph = graph;

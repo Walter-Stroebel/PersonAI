@@ -60,21 +60,6 @@ public class OpenAIAPI {
     }
 
     /**
-     * Quick &amp; dirty token usage.
-     *
-     * @return Total tokens since last call.
-     */
-    public static int getTotalTokenUsage() {
-        List<Usage> snapshot = new ArrayList<>(usages);
-        usages.clear();
-        int ret = 0;
-        for (Usage u : snapshot) {
-            ret += u.totalTokens;
-        }
-        return ret;
-    }
-
-    /**
      * Ask some questions.
      *
      * @param messages questions to ask the assistant, should be

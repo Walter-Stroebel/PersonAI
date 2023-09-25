@@ -24,11 +24,11 @@ import nl.infcomtec.tools.ToolManager;
  * @author walter
  */
 public class ClGraph {
-
+    
     public static String dotColor(Color c) {
         return "\"#" + Integer.toHexString(c.getRGB()).substring(2) + "\"";
     }
-
+    
     private final AtomicInteger uid = new AtomicInteger(0);
     public final AtomicReference<Color> defaultNodeForegroundColor = new AtomicReference<>(Color.BLACK);
     public final AtomicReference<Color> defaultNodeBackgroundColor = new AtomicReference<>(Color.WHITE);
@@ -37,27 +37,31 @@ public class ClGraph {
     private final TreeMap<Integer, ClNode> nodeMap = new TreeMap<>();
     public HashMap<String, Point2D> nodeCenters;
     public HashMap<String, BitShape> segments;
-
+    
     public synchronized void clear() {
         nodeMap.clear();
         nodeCenters = null;
         segments = null;
         uid.set(0);
     }
-
+    
     public ClNode addNode(ClNode node) {
         nodeMap.put(node.getId(), node);
         return node;
     }
-
+    
     public int genId() {
         return uid.incrementAndGet();
     }
-
+    
     public ClNode getNode(int id) {
         return nodeMap.get(id);
     }
-
+    
+    public ClNode getNode(String name) {
+        return nodeMap.get(Integer.valueOf(name.substring(1)));
+    }
+    
     public void draw(OutputStream out) {
         ToolManager tm = new ToolManager() {
             @Override
@@ -81,7 +85,7 @@ public class ClGraph {
         tm.setCommand("dot", "-Tpng");
         tm.run();
     }
-
+    
     public BufferedImage render() throws Exception {
         BufferedImage image;
         try ( PipedOutputStream out = new PipedOutputStream();  PipedInputStream in = new PipedInputStream(out)) {
@@ -120,7 +124,7 @@ public class ClGraph {
         generatePlain(image.getWidth(), image.getHeight());
         return image;
     }
-
+    
     @SuppressWarnings("ConvertToStringSwitch") // because that would generate a goto
     public void generatePlain(int W, int H) throws Exception {
         nodeCenters = new HashMap<>();
@@ -175,7 +179,7 @@ public class ClGraph {
             }
         }
     }
-
+    
     public ClNode getNode(MouseEvent e) {
         String nId = "";
         Point p = e.getPoint();
@@ -192,5 +196,5 @@ public class ClGraph {
         }
         return null;
     }
-
+    
 }

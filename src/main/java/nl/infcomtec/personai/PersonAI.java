@@ -19,8 +19,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Iterator;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -34,6 +37,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClGraph;
@@ -43,16 +47,32 @@ import nl.infcomtec.simpleimage.ImageViewer;
 import nl.infcomtec.simpleimage.Marker;
 import nl.infcomtec.tools.PandocConverter;
 
+/**
+ * Main class.
+ *
+ * @author walter
+ */
 public class PersonAI {
 
-    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24);
-    public static final String osName = System.getProperty("os.name").toLowerCase();
+    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24); ///< This is the base of all scaling code.
+    public static final String osName = System.getProperty("os.name").toLowerCase(); ///< Use this if you encounter OS specific issues
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
-    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW");
-    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key");
+    public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); ///< A central way to configure GSon
+    public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); ///< This might vary on another OS.
+    public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); ///< This might vary on another OS.
+    public final static AtomicInteger totalPromptTokens = new AtomicInteger();
+    public final static AtomicInteger totalOutputTokens = new AtomicInteger();
+    public final static double ITC = 0.003 / 1000;
+    public final static double OTC = 0.004 / 1000;
 
+    /**
+     * Starting point.
+     *
+     *
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         PersonAI.WORK_DIR.mkdirs(); // in case it doesn't
         if (!PersonAI.WORK_DIR.exists()) {
@@ -72,6 +92,8 @@ public class PersonAI {
     private ImageViewer dotViewer;
     private Vagrant vagrant;
     private JTextArea userInput;
+    private final TreeSet<String> selectedNodes = new TreeSet<>();
+    private ClNode insNode;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -97,6 +119,7 @@ public class PersonAI {
     }
 
     private void initGUI() {
+        // XXX main display tab
         try {
             dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
         } catch (IOException ex) {
@@ -151,19 +174,59 @@ public class PersonAI {
         box.add(pan, BorderLayout.CENTER);
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Type a message here (optional):"));
         box.add(inpPan, BorderLayout.NORTH);
+        // XXX Commit / send button
         box.add(new JButton(new AbstractAction("Send to AI/LLM") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                String question = userInput.getText().trim();
+                StringBuilder sb = new StringBuilder(userInput.getText().trim());
+                for (String k : selectedNodes) {
+                    sb.append(graph.getNode(k).getUserStr()).append(System.lineSeparator());
+                }
+                String question = sb.toString().trim();
                 if ((!question.isEmpty())) {
                     try {
-                        String answer = OpenAIAPI.makeRequest(null, question);
-                        ClNode node = graph.addNode(new ClNode(graph, "Question").withShape("box"));
-                        node.setUserObj(answer);
+                        String answer;
+                        if (null != curIns) {
+                            answer = OpenAIAPI.makeRequest(new Message[]{
+                                new Message(Message.ROLES.system, "You are being used with a tree-of-thought tool. The following are previous messages and an instruction."),
+                                new Message(Message.ROLES.user, curIns.prompt),
+                                new Message(Message.ROLES.assistant, question)
+                            });
+                        } else {
+                            answer = OpenAIAPI.makeRequest(null, question);
+                        }
+                        String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
+                        selectedNodes.clear();
+                        userInput.setText("");
+                        // XXX cost calculation
+                        for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
+                            Usage us = it.next();
+                            it.remove();
+                            totalPromptTokens.addAndGet(us.promptTokens);
+                            totalOutputTokens.addAndGet(us.completionTokens);
+                        }
+                        System.out.format("Cost: %.2f + %.2f = %3$.2f (%3$f)\n",
+                                totalPromptTokens.get() * ITC,
+                                totalOutputTokens.get() * OTC,
+                                totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC);
+                        ClNode q;
+                        if (null == insNode) {
+                            q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
+                        } else {
+                            if (null != curIns) {
+                                q = graph.addNode(new ClNode(graph, curIns.description).withShape("diamond"));
+                            } else {
+                                q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
+                            }
+                        }
+                        q.setUserObj(question);
+                        ClNode a = graph.addNode(new ClNode(graph, tagLine).withShape("box"));
+                        a.setUserObj(answer);
+                        graph.addNode(new ClEdge(q, a, "answer"));
                         BufferedImage render = graph.render();
                         dot.putImage(render);
                         graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
-                        topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+                        topic.setText(new PandocConverter().convertMarkdownToText132(a.getUserStr()));
                         frame.repaint();
                     } catch (Exception ex) {
                         Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
@@ -174,7 +237,7 @@ public class PersonAI {
         main.add(box, BorderLayout.EAST);
         main.add(topPan, BorderLayout.SOUTH);
         tabbedPane.addTab("Main", main);
-        tabbedPane.addTab("Tab 2", new JPanel());
+        // XXX note: main page toolbar buttons
         putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -276,6 +339,16 @@ public class PersonAI {
         setTab(title, pane);
     }
 
+    private void closeTab(ClNode node) {
+        String t = node.getName() + "." + node.label;
+        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
+            if (tabbedPane.getTitleAt(i).equals(t)) {
+                tabbedPane.remove(i);
+                return;
+            }
+        }
+    }
+
     private void setTab(String title, Component comp) {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
             if (tabbedPane.getTitleAt(i).equals(title)) {
@@ -347,13 +420,13 @@ public class PersonAI {
             public void actionPerformed(ActionEvent ae) {
                 frame.repaint();
             }
-        },new AbstractAction() {
+        }, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 rebuild();
             }
         });
-        setTab(node.label, panel);
+        setTab(node.getName() + "." + node.label, panel);
     }
 
     private class GraphMouse extends ImageObject.ImageObjectListener {
@@ -364,15 +437,26 @@ public class PersonAI {
 
         @Override
         public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
+            // XXX user mouse interactions with the main display
             ClNode node = graph.getNode(e);
-            System.out.println(node.getName() + ": " + node.label);
-            System.out.println(graph.nodeCenters);
-            System.out.println(graph.segments.keySet());
-            Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
-            dotViewer.clearMarkers();
-            dotViewer.addMarker(m);
-            topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
-            addReplaceTab(node);
+            if (SwingUtilities.isLeftMouseButton(e)) {
+                insNode = node;
+                if (selectedNodes.add(node.getName())) {
+                    Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
+                    dotViewer.addMarker(m);
+                } else {
+                    topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+                    addReplaceTab(node);
+                }
+            } else {
+                selectedNodes.remove(node.getName());
+                closeTab(node);
+                dotViewer.clearMarkers();
+                for (String nn : selectedNodes) {
+                    Marker m = new Marker(graph.segments.get(nn), 0xFFE0E0E0, 0x7F0000);
+                    dotViewer.addMarker(m);
+                }
+            }
             frame.repaint();
         }
     }
