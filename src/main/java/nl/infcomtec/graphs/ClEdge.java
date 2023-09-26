@@ -25,6 +25,22 @@ public class ClEdge extends ClNode {
         shape="edge";
     }
 
+    public ClEdge(ClGraph g, NodeJSON nj) {
+        super(g,nj);
+        this.fromNode = g.getNode(nj.from);
+        this.toNode = g.getNode(nj.to);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ClEdge{");
+        sb.append("\n\tfromNode=").append(fromNode);
+        sb.append("\n\ttoNode=").append(toNode);
+        sb.append('}');
+        return sb.toString();
+    }
+
     @Override
     public String generateDotRepresentation() {
         String n1= "N"+fromNode.getId();

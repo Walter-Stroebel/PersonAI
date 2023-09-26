@@ -81,45 +81,49 @@ public class OpenAIAPI {
      * @throws IOException if something failed.
      */
     public static String makeRequest(List<Message> messages) throws IOException {
-        long start=System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         try {
-        OkHttpClient.Builder builder=new OkHttpClient.Builder().callTimeout(30,TimeUnit.SECONDS);
-        OkHttpClient client = builder.build();
-        JsonObject messageJson = new JsonObject();
-        messageJson.addProperty("model", "gpt-3.5-turbo-16k");
-        JsonArray messageArray = new JsonArray();
-        for (Message e : messages) {
-            messageArray.add(e.get());
-        }
-        messageJson.add("messages", messageArray);
-        MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
-        RequestBody requestBody = RequestBody.create(messageJson.toString(), mediaType);
+            OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                    .callTimeout(30, TimeUnit.SECONDS)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS);
+            OkHttpClient client = builder.build();
+            JsonObject messageJson = new JsonObject();
+            messageJson.addProperty("model", "gpt-3.5-turbo-16k");
+            JsonArray messageArray = new JsonArray();
+            for (Message e : messages) {
+                messageArray.add(e.get());
+            }
+            messageJson.add("messages", messageArray);
+            MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
+            RequestBody requestBody = RequestBody.create(messageJson.toString(), mediaType);
 
-        Request request = new Request.Builder()
-                .url(API_ENDPOINT)
-                .addHeader("Authorization", "Bearer " + getKey())
-                .post(requestBody)
-                .build();
-        try ( Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new IOException("Unexpected code " + response);
+            Request request = new Request.Builder()
+                    .url(API_ENDPOINT)
+                    .addHeader("Authorization", "Bearer " + getKey())
+                    .post(requestBody)
+                    .build();
+            try ( Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    throw new IOException("Unexpected code " + response);
+                }
+                if (null == response.body()) {
+                    throw new IOException("Null body " + response);
+                }
+                String responseBody = response.body().string();
+                JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
+                usages.add(new Usage(jsonResponse.getAsJsonObject("usage")));
+                // just to avoid ChatGPT commenting on this
+                if (usages.size() > 100000) {
+                    // nobody wants them I guess
+                    usages.clear();
+                }
+                System.out.format("Request duration was %.3f seconds\n", (System.currentTimeMillis() - start) / 1000.0);
+                return jsonResponse.getAsJsonArray("choices").get(0).getAsJsonObject().get("message").getAsJsonObject().get("content").getAsString();
             }
-            if (null == response.body()) {
-                throw new IOException("Null body " + response);
-            }
-            String responseBody = response.body().string();
-            JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
-            usages.add(new Usage(jsonResponse.getAsJsonObject("usage")));
-            // just to avoid ChatGPT commenting on this
-            if (usages.size() > 100000) {
-                // nobody wants them I guess
-                usages.clear();
-            }
-            System.out.format("Request duration was %.3f seconds\n",(System.currentTimeMillis()-start)/1000.0);
-            return jsonResponse.getAsJsonArray("choices").get(0).getAsJsonObject().get("message").getAsJsonObject().get("content").getAsString();
-        }
-        } catch (IOException ex){
-            System.out.format("Request failed after %.3f seconds\n",(System.currentTimeMillis()-start)/1000.0);
+        } catch (IOException ex) {
+            System.out.format("Request failed after %.3f seconds\n", (System.currentTimeMillis() - start) / 1000.0);
             throw new IOException(ex.getMessage());
         }
     }

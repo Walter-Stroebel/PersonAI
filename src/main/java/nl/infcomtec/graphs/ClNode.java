@@ -14,7 +14,7 @@ public class ClNode {
     protected final ClGraph graph;
     protected final Color foreColor;
     protected final Color backColor;
-    protected String shape="ellipse";
+    protected String shape = "ellipse";
     private Object userObj;
 
     /**
@@ -39,11 +39,11 @@ public class ClNode {
     }
 
     public void setShape(String shape) {
-        this.shape=shape;
+        this.shape = shape;
     }
 
     public ClNode withShape(String shape) {
-        this.shape=shape;
+        this.shape = shape;
         return this;
     }
 
@@ -129,4 +129,57 @@ public class ClNode {
     public void setUserObj(Object userObj) {
         this.userObj = userObj;
     }
+
+    /**
+     * Add a string to or set the userObt to the string.
+     *
+     * @param str String to add or set.
+     */
+    public void appendUserObj(String str) {
+        StringBuilder cur = new StringBuilder(getUserStr());
+        cur.append(System.lineSeparator());
+        cur.append(str);
+        userObj = cur.toString();
+    }
+
+    public ClNode(ClGraph g, NodeJSON nj) {
+        this.backColor = new Color(nj.bCol);
+        this.foreColor = new Color(nj.fCol);
+        this.id = nj.id;
+        this.graph = g;
+        this.label = nj.label;
+        this.shape = nj.shape;
+        this.userObj = nj.userObj;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ClNode ");
+        sb.append("label=").append(label);
+        sb.append(", id=").append(id);
+        sb.append(", shape=").append(shape);
+        sb.append(", userObj=").append(userObj);
+        sb.setLength(Math.min(sb.length(), 100));
+        return sb.toString();
+    }
+
+    public static class NodeJSON {
+
+        int fCol;
+        int bCol;
+        String label;
+        String userObj;
+        Integer from;
+        Integer to;
+        String shape;
+        int id;
+
+        public NodeJSON(int id, int fCol, int bCol) {
+            this.id = id;
+            this.fCol = fCol;
+            this.bCol = bCol;
+        }
+    }
+
 }

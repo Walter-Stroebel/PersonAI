@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.List;
-import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,6 +28,7 @@ import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -43,11 +42,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import nl.infcomtec.graphs.ClEdge;
-import nl.infcomtec.graphs.ClGraph;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
-import nl.infcomtec.simpleimage.Marker;
 import nl.infcomtec.tools.PandocConverter;
 
 /**
@@ -87,20 +84,17 @@ public class PersonAI {
         }
         new PersonAI();
     }
-
+    public ImageObject dot;
     public JFrame frame;
     public JToolBar toolBar;
     public JTabbedPane tabbedPane;
-    public ImageObject dot;
     private JTextArea topic;
     private Instructions ins;
     private Instruction curIns;
-    public ClGraph graph = new ClGraph();
+    public Conversation convo = new Conversation();
     private ImageViewer dotViewer;
     private Vagrant vagrant;
     private JTextArea userInput;
-    private final TreeSet<String> selectedNodes = new TreeSet<>();
-    private ClNode insNode;
     private JLabel costLabel;
     private JProgressBar progressBar;
     private JTextArea progressMsg;
@@ -171,7 +165,7 @@ public class PersonAI {
             JButton jb = new JButton(new AbstractAction(i.description) {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
-                    if (selectedNodes.isEmpty()) {
+                    if (!convo.hasSelection()) {
                         JOptionPane.showMessageDialog(frame, "Please select a node first.");
                         return;
                     }
@@ -242,22 +236,25 @@ public class PersonAI {
                 }
             }
         }));
+        putOnBar(new JButton(new AbstractAction("Save") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                JFileChooser jfc = new JFileChooser(WORK_DIR);
+                int ret = jfc.showSaveDialog(frame);
+                if (ret == JFileChooser.APPROVE_OPTION) {
+                    convo.save(jfc.getSelectedFile(), gson);
+                }
+            }
+        }));
         putOnBar(new JButton(new AbstractAction("Load") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                graph.clear();
-                ClNode n1 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                ClNode n2 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                ClNode n3 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                ClNode n4 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                ClNode n5 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                ClNode n6 = graph.addNode(new ClNode(graph, UUID.randomUUID().toString()).withShape("box"));
-                graph.addNode(new ClEdge(n1, n2, ""));
-                graph.addNode(new ClEdge(n2, n3, ""));
-                graph.addNode(new ClEdge(n2, n4, ""));
-                graph.addNode(new ClEdge(n1, n5, ""));
-                graph.addNode(new ClEdge(n5, n6, ""));
-                rebuild();
+                JFileChooser jfc = new JFileChooser(WORK_DIR);
+                int ret = jfc.showOpenDialog(frame);
+                if (ret == JFileChooser.APPROVE_OPTION) {
+                    convo.load(jfc.getSelectedFile(), gson);
+                    rebuild();
+                }
             }
         }));
         putOnBar(new JButton(new AbstractAction("Clear") {
@@ -305,9 +302,9 @@ public class PersonAI {
     private void rebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
-            BufferedImage render = graph.render();
+            BufferedImage render = convo.render();
             dot.putImage(render);
-            graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
+            convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
             frame.repaint();
         } catch (Exception ex) {
             Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
@@ -417,26 +414,17 @@ public class PersonAI {
 
         @Override
         public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-            // XXX user mouse interactions with the main display
-            ClNode node = graph.getNode(e);
+            ClNode node = convo.getNode(e);
+            System.out.println("Sel: " + node);
             if (SwingUtilities.isLeftMouseButton(e)) {
-                insNode = node;
-                if (selectedNodes.add(node.getName())) {
-                    Marker m = new Marker(graph.segments.get(node.getName()), 0xFFE0E0E0, 0x7F0000);
-                    dotViewer.addMarker(m);
-                } else {
-                    topic.setText(new PandocConverter().convertMarkdownToText132(node.getUserStr()));
+                if (!convo.selectNode(node, dotViewer)) {
                     addReplaceTab(node);
                 }
             } else {
-                selectedNodes.remove(node.getName());
+                convo.unselectNode(node, dotViewer);
                 closeTab(node);
-                dotViewer.clearMarkers();
-                for (String nn : selectedNodes) {
-                    Marker m = new Marker(graph.segments.get(nn), 0xFFE0E0E0, 0x7F0000);
-                    dotViewer.addMarker(m);
-                }
             }
+            topic.setText(convo.getSelNodeText());
             frame.repaint();
         }
     }
@@ -449,11 +437,7 @@ public class PersonAI {
 
         @Override
         public void actionPerformed(ActionEvent ae) {
-            StringBuilder sb = new StringBuilder(userInput.getText().trim());
-            for (String k : selectedNodes) {
-                sb.append(EOLN);
-                sb.append(graph.getNode(k).getUserStr());
-            }
+            StringBuilder sb = convo.getSelectedText(userInput.getText());
             String question = sb.toString().trim();
             if ((!question.isEmpty())) {
                 progressBar.setIndeterminate(true); // Sets the progress bar to indeterminate while processing
@@ -499,7 +483,7 @@ public class PersonAI {
                 }
                 publish("2:Asking LLM for tagline");
                 String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
-                selectedNodes.clear();
+                convo.clearSelection();
                 userInput.setText("");
                 // XXX cost calculation
                 for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
@@ -518,26 +502,39 @@ public class PersonAI {
                     lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
                 }
                 publish("3:Rebuilding graph");
-                ClNode q;
-                if (null == insNode) {
-                    q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
-                } else {
-                    if (null != curIns) {
-                        q = graph.addNode(new ClNode(graph, curIns.description).withShape("diamond"));
+                ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
+                q.setUserObj(question);
+                System.out.println("Answer: [" + answer + "]");
+                String[] lines = answer.split("\n");
+                ClNode a = convo.addNode(new ClNode(convo, tagLine).withShape("box"));
+                ClNode parent = a;
+                StringBuilder section = new StringBuilder();
+                for (String line : lines) {
+                    if (line.startsWith("# ")) {
+                        String header = line.substring(1).trim();
+                        if (section.length() > 0) {
+                            parent.appendUserObj(section.toString());
+                            section.setLength(0);
+                            section.append(line);
+                        }
+                        // Create a new child node under `a`
+                        ClNode child = convo.addNode(new ClNode(convo, header).withShape("box"));
+                        convo.addNode(new ClEdge(a, child, header));
+                        parent = child;
                     } else {
-                        q = graph.addNode(new ClNode(graph, "Question").withShape("diamond"));
+                        if (section.length() > 0) {
+                            section.append(EOLN);
+                        }
+                        section.append(line);
                     }
                 }
-                q.setUserObj(question);
-                ClNode a = graph.addNode(new ClNode(graph, tagLine).withShape("box"));
-                a.setUserObj(answer);
-                graph.addNode(new ClEdge(q, a, "answer"));
-                if (null != insNode) {
-                    graph.addNode(new ClEdge(insNode, q, "question"));
+                if (section.length() > 0) {
+                    a.appendUserObj(section.toString());
                 }
-                BufferedImage render = graph.render();
+                convo.addNode(new ClEdge(q, a, "answer"));
+                BufferedImage render = convo.render();
                 dot.putImage(render);
-                graph.segments = dot.calculateClosestAreas(graph.nodeCenters);
+                convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
                 topic.setText(new PandocConverter().convertMarkdownToText132(a.getUserStr()));
                 publish("0:Ready for next question");
                 frame.repaint();
