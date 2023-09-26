@@ -26,7 +26,7 @@ public class Instructions {
                 throw new RuntimeException(ex);
             }
         } else {
-            try ( InputStreamReader isr = new InputStreamReader(Instructions.class.getResourceAsStream("/instructions.json"))) {
+            try ( InputStreamReader isr = new InputStreamReader(Instructions.class.getResourceAsStream("/"+PersonAI.INS_FILENAME))) {
                 Instructions ret = gson.fromJson(isr, Instructions.class);
                 ret.save(file, gson);
                 return ret;

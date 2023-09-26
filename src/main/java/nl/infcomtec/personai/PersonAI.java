@@ -70,6 +70,7 @@ public class PersonAI {
     public final static double OTC = 0.004 / 1000;
     private static final String EOLN = System.lineSeparator();
     private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
+    public static final String INS_FILENAME = "instructions.json";
 
     /**
      * Starting point.
@@ -164,7 +165,7 @@ public class PersonAI {
                 "Type a message here:"));
         topic = new JTextArea();
         JPanel south = buildSouthPanel(dm);
-        ins = Instructions.load(new File(WORK_DIR, "instructions.json"), gson);
+        ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
         pan.add(new JLabel("Pick an operation: "));
         for (final Instruction i : ins.insList) {
             JButton jb = new JButton(new AbstractAction(i.description) {
@@ -303,7 +304,7 @@ public class PersonAI {
 
     private void rebuild() {
         try {
-            ins = Instructions.load(new File(PersonAI.WORK_DIR, "instructions.json"), gson);
+            ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
             BufferedImage render = graph.render();
             dot.putImage(render);
             graph.segments = dot.calculateClosestAreas(graph.nodeCenters);

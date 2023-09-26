@@ -62,7 +62,7 @@
     },
     {
       "description": "Restructure",
-      "prompt": "Restructure the following text as a tree. Clearly mark each level and sublevel for simple parsing by the user\u0027s tooling."
+      "prompt": "Divide the text into distinct sections or units of meaning. Each section should encapsulate a single idea, topic, or argument. Precede each section with a short header starting with a '#' character."
     },
     {
       "description": "Priority Sort",
