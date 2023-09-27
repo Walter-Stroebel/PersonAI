@@ -35,16 +35,12 @@ This is your visual board where ideas take shape. Each 'node' or bubble represen
 1. **Type Your Question**: In the text box, type a question you have.
 2. **Get an Answer**: Press Enter. You'll see a new node appear in the brainstorming graph. This node contains a summarized answer to your question.
 
-<!-- Insert visual here -->
-
 ## Using Pre-cooked Questions
 
 If you're not sure what to ask, we've got you covered. Below the text box, there are buttons with pre-cooked questions.
 
 - **How to Use**: Simply click on one of these buttons, and a question will be automatically fed into the text box. Press Enter to get your answer.
 - **Tooltip Guidance**: Hover over a button to see a prompt about what the question will ask.
-
-<!-- Insert visual here -->
 
 ## Tabs for Your Thoughts
 
@@ -53,8 +49,6 @@ The tool organizes your interactions in different tabs.
 1. **Main Tab**: Displays a preview of the latest answer.
 2. **Last Interaction**: Shows the last full dialogue you had.
 3. **Custom Tabs**: Clicking an existing, selected node will open it in a new tab, in an easy-to-read HTML format.
-
-<!-- Insert visual here -->
 
 ## Additional Features
 
@@ -65,7 +59,6 @@ At the top of the screen, you'll find some buttons for other operations:
 - **Save & Load**: Save your current session or load a previous one.
 - **Vagrant Operations**: Start, check logs, and stop Vagrant if you're using it. (Don't worry if you're not sure what this is, you might not need it!)
 
-<!-- Insert visual here -->
 
 ---
 
