@@ -1,5 +1,6 @@
 package nl.infcomtec.personai;
 
+import java.util.LinkedList;
 import java.util.TreeSet;
 import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClGraph;
@@ -43,16 +44,16 @@ public class Conversation extends ClGraph {
         if (null != insNode && insNode.equals(node)) {
             if (hasSelection()) {
                 insNode = getNode(selectedNodes.last());
-            }else{
-                insNode=null;
+            } else {
+                insNode = null;
             }
         }
         reMark(dotViewer);
         return ret;
     }
-    
-    public String getSelNodeText(){
-        if(null!=insNode){
+
+    public String getSelNodeText() {
+        if (null != insNode) {
             return insNode.getUserStr();
         }
         return "";
@@ -77,5 +78,37 @@ public class Conversation extends ClGraph {
             addNode(new ClEdge(insNode, ret, "question"));
         }
         return ret;
+    }
+
+    public void addAnswer(ClNode q, String tagLine, String answer) {
+        System.out.println("Answer: [" + answer + "]");
+        String[] lines = answer.split("\n");
+        LinkedList<StringBuilder> sections = new LinkedList<>();
+        StringBuilder section = new StringBuilder();
+        for (String line : lines) {
+            if (line.startsWith("# ")) {
+                sections.add(section);
+                section = new StringBuilder(line);
+                section.append(EOLN);
+            } else {
+                section.append(line);
+                section.append(EOLN);
+            }
+        }
+        if (section.length() > 0) {
+            sections.add(section);
+        }
+        ClNode a = addNode(new ClNode(this, tagLine).withShape("box"));
+        a.setUserObj(sections.removeFirst().toString());
+        addNode(new ClEdge(q, a, tagLine));
+        insNode=a;
+        selectedNodes.add(a.getName());
+        while (!sections.isEmpty()) {
+            section = sections.removeFirst();
+            int nl = section.indexOf("\n");
+            ClNode sub = new ClNode(this, (nl >= 0) ? section.substring(0, nl) : "# Header?");
+            sub.setUserObj(section.toString());
+            addNode(new ClEdge(a, sub, "topic"));
+        }
     }
 }

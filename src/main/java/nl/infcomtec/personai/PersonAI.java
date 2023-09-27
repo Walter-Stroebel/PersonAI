@@ -41,7 +41,6 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
-import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
@@ -101,10 +100,9 @@ public class PersonAI {
 
     public PersonAI() throws IOException {
         initGUI();
-        topic.setText(new PandocConverter().convertMarkdownToText132(
-                "# No question yet\n"
+        topic.setText("Welcome to your Personal AI -- PersonAI.\n"
                 + "Enter a question and press the button.\n"
-                + "_This is still a WIP!_"));
+                + "Note: this is a first draft implementation of a Proof of Concept!");
         setVisible();
     }
 
@@ -504,38 +502,11 @@ public class PersonAI {
                 publish("3:Rebuilding graph");
                 ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
                 q.setUserObj(question);
-                System.out.println("Answer: [" + answer + "]");
-                String[] lines = answer.split("\n");
-                ClNode a = convo.addNode(new ClNode(convo, tagLine).withShape("box"));
-                ClNode parent = a;
-                StringBuilder section = new StringBuilder();
-                for (String line : lines) {
-                    if (line.startsWith("# ")) {
-                        String header = line.substring(1).trim();
-                        if (section.length() > 0) {
-                            parent.appendUserObj(section.toString());
-                            section.setLength(0);
-                            section.append(line);
-                        }
-                        // Create a new child node under `a`
-                        ClNode child = convo.addNode(new ClNode(convo, header).withShape("box"));
-                        convo.addNode(new ClEdge(a, child, header));
-                        parent = child;
-                    } else {
-                        if (section.length() > 0) {
-                            section.append(EOLN);
-                        }
-                        section.append(line);
-                    }
-                }
-                if (section.length() > 0) {
-                    a.appendUserObj(section.toString());
-                }
-                convo.addNode(new ClEdge(q, a, "answer"));
+                convo.addAnswer(q,tagLine,answer);
                 BufferedImage render = convo.render();
                 dot.putImage(render);
                 convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
-                topic.setText(new PandocConverter().convertMarkdownToText132(a.getUserStr()));
+                topic.setText(new PandocConverter().convertMarkdownToText132(answer));
                 publish("0:Ready for next question");
                 frame.repaint();
             } catch (Exception e) {

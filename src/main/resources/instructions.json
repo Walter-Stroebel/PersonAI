@@ -65,6 +65,10 @@
       "prompt": "Divide the text into distinct sections or units of meaning. Each section should encapsulate a single idea, topic, or argument. Precede each section with a short header starting with a '#' character."
     },
     {
+      "description": "Bullet points to graph.",
+      "prompt": "Please transform these bullet points to sections of text. Precede each section with a short header starting with a '#' character."
+    },
+    {
       "description": "Priority Sort",
       "prompt": "Arrange this information by order of importance or relevance."
     }

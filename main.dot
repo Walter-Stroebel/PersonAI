@@ -1,0 +1,19 @@
+digraph G {
+    rankdir=LR;
+
+    // Nodes
+    "Question" [shape=diamond, label="Rain or shine"];
+    "Answer" [shape=box, label="Answer"];
+    "Clouds" [shape=box, label="Dark Clouds"];
+    "Wind" [shape=box, label="Strong Wind"];
+    "Humidity" [shape=box, label="High Humidity"];
+    "Pressure" [shape=box, label="Low Pressure"];
+
+    // Edges
+    "Question" -> "Answer";
+    "Answer" -> "Clouds";
+    "Answer" -> "Wind";
+    "Answer" -> "Humidity";
+    "Answer" -> "Pressure";
+}
+
