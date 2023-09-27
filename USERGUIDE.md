@@ -23,7 +23,9 @@ Welcome to PersonAI, your friendly companion for brainstorming and exploring new
 
 This is your visual board where ideas take shape. Each 'node' or bubble represents an idea or piece of information. 
 
-- **Selecting Nodes**: Just click on a node to select it. Right-click to deselect.
+- **Selecting Nodes**: Just click on nodes to select them. Right-click to deselect.
+- **Nodes contain text, you will see that at the bottom of the display.
+- **If you click on an already selected node, it will be displayed full screen. I don't like that myself, I will probably change how that works.
 - **What Happens Next**: The selected nodes are used to guide the tool in generating more specific information for you.
 
 ![Main screen](main.png)
