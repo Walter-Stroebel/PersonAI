@@ -18,7 +18,7 @@ public class PandocConverter extends ToolManager {
     public String convertMarkdownToText132(String markdownInput) {
         setInput(markdownInput);
         // Set up the command to run Pandoc --wrap=auto  -f markdown -t plain
-        setCommand("pandoc", "--wrap=auto", "--columns=132", "-f", "markdown", "-t", "plain");
+        setCommand("pandoc", "-f", "markdown", "--wrap=auto", "--columns=80", "-t", "plain");
         run();
         return output;
     }

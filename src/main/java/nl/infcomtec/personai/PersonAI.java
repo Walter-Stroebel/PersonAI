@@ -27,7 +27,9 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -97,6 +99,7 @@ public class PersonAI {
     private JLabel costLabel;
     private JProgressBar progressBar;
     private JTextArea progressMsg;
+    private ButtonGroup insGrp;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -159,8 +162,9 @@ public class PersonAI {
         JPanel south = buildSouthPanel(dm);
         ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
         pan.add(new JLabel("Pick an operation: "));
+        insGrp = new ButtonGroup();
         for (final Instruction i : ins.insList) {
-            JButton jb = new JButton(new AbstractAction(i.description) {
+            JCheckBox jb = new JCheckBox(new AbstractAction(i.description) {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
                     if (!convo.hasSelection()) {
@@ -172,6 +176,7 @@ public class PersonAI {
             });
             jb.setToolTipText(i.prompt);
             pan.add(jb);
+            insGrp.add(jb);
         }
         box.add(pan, BorderLayout.CENTER);
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
@@ -324,7 +329,7 @@ public class PersonAI {
         }
     }
 
-    private void setTab(String title, Component comp) {
+    public void setTab(String title, Component comp) {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
             if (tabbedPane.getTitleAt(i).equals(title)) {
                 tabbedPane.setComponentAt(i, comp);
@@ -390,7 +395,7 @@ public class PersonAI {
     }
 
     private void addReplaceTab(ClNode node) {
-        NodePanel panel = new NodePanel(node, new AbstractAction() {
+        NodePanel panel = new NodePanel(this, node, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 frame.repaint();
@@ -401,7 +406,6 @@ public class PersonAI {
                 rebuild();
             }
         });
-        setTab(node.getName() + "." + node.label, panel);
     }
 
     private class GraphMouse extends ImageObject.ImageObjectListener {
@@ -483,6 +487,7 @@ public class PersonAI {
                 String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
                 convo.clearSelection();
                 userInput.setText("");
+                insGrp.clearSelection();
                 // XXX cost calculation
                 for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
                     Usage us = it.next();
@@ -502,7 +507,7 @@ public class PersonAI {
                 publish("3:Rebuilding graph");
                 ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
                 q.setUserObj(question);
-                convo.addAnswer(q,tagLine,answer);
+                convo.addAnswer(q, tagLine, answer);
                 BufferedImage render = convo.render();
                 dot.putImage(render);
                 convo.segments = dot.calculateClosestAreas(convo.nodeCenters);

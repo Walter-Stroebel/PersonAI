@@ -66,7 +66,7 @@
     },
     {
       "description": "Bullet points to graph.",
-      "prompt": "Please transform these bullet points to sections of text. Precede each section with a short header starting with a '#' character."
+      "prompt": "Transform the list with bullet points into a list with headers. Use a single '@' character as a marker for each header. Please ensure that no other special markers are used for sub-levels."
     },
     {
       "description": "Priority Sort",
