@@ -79,7 +79,7 @@ public class Conversation extends ClGraph {
         }
         return ret;
     }
-
+    
     public void addAnswer(ClNode q, String tagLine, String answer) {
         System.out.println("Answer: [" + answer + "]");
         String[] lines = answer.split("\n");

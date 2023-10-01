@@ -3,6 +3,8 @@ package nl.infcomtec.personai;
 import java.awt.Font;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JEditorPane;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.tools.PandocConverter;
@@ -65,12 +67,16 @@ public class NodePanel extends javax.swing.JPanel {
 
         tfLabel.setColumns(20);
         tfLabel.setText(node.label);
+        tfLabel.setBorder(BorderFactory.createTitledBorder("Display label"));
         jPanel1.add(tfLabel);
+        jPanel1.add(Box.createVerticalGlue());
 
         jSlider1.setMaximum(48);
         jSlider1.setMinimum(6);
-        jSlider1.setToolTipText("Font size");
+        jSlider1.setToolTipText("Change the size of the displayed text.");
+        jSlider1.setBorder(BorderFactory.createTitledBorder("Font size"));
         jSlider1.setValue(24);
+        
         jSlider1.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 jSlider1StateChanged(evt);

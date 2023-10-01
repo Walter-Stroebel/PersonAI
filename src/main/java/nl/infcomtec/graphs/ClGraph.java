@@ -45,6 +45,10 @@ public class ClGraph {
     private final TreeMap<Integer, ClNode> nodeMap = new TreeMap<>();
     public HashMap<String, Point2D> nodeCenters;
     public HashMap<String, BitShape> segments;
+    /**
+     * Default is top-down, set to true for left-to-right.
+     */
+    public boolean lr = false;
 
     public synchronized void clear() {
         nodeMap.clear();
@@ -155,7 +159,10 @@ public class ClGraph {
     }
 
     private synchronized String genDot() {
-        StringBuilder gr = new StringBuilder("digraph {").append(System.lineSeparator()).append("rankdir=LR;").append(System.lineSeparator());
+        StringBuilder gr = new StringBuilder("digraph {").append(System.lineSeparator());
+        if (lr) {
+            gr.append("rankdir=LR;").append(System.lineSeparator());
+        }
         for (ClNode n : getNodes()) {
             gr.append(n.generateDotRepresentation()).append(System.lineSeparator());
         }

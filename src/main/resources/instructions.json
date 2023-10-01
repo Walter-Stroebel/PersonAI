@@ -65,8 +65,8 @@
       "prompt": "Divide the text into distinct sections or units of meaning. Each section should encapsulate a single idea, topic, or argument. Precede each section with a short header starting with a '#' character."
     },
     {
-      "description": "Bullet points to graph.",
-      "prompt": "Transform the list with bullet points into a list with headers. Use a single '@' character as a marker for each header. Please ensure that no other special markers are used for sub-levels."
+      "description": "Metric",
+      "prompt": "Please use metric units and Celcius if applicable."
     },
     {
       "description": "Priority Sort",

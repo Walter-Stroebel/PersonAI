@@ -69,6 +69,8 @@ public class PersonAI {
     private static final String EOLN = System.lineSeparator();
     private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
     public static final String INS_FILENAME = "instructions.json";
+    private static final String MAIN_TITLE = "Main";
+    private static final String LAST_TITLE = "Last Interaction";
 
     /**
      * Starting point.
@@ -185,7 +187,7 @@ public class PersonAI {
         box.add(new JButton(new SubmitAction("Send to AI/LLM")), BorderLayout.SOUTH);
         main.add(box, BorderLayout.EAST);
         main.add(south, BorderLayout.SOUTH);
-        tabbedPane.addTab("Main", main);
+        tabbedPane.addTab(MAIN_TITLE, main);
         addButtons();
     }
 
@@ -308,6 +310,25 @@ public class PersonAI {
             BufferedImage render = convo.render();
             dot.putImage(render);
             convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
+            Component main=null;
+            Component last=null;
+            for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
+                String tit = tabbedPane.getTitleAt(i);
+                if (tit.equals(MAIN_TITLE)) {
+                    main=tabbedPane.getComponentAt(i);
+                }
+                if (tit.equals(LAST_TITLE)) {
+                    last=tabbedPane.getComponentAt(i);
+                }
+            }
+            if (null==main)main=new JLabel("This should not happen.");
+            if (null==last)last=new JLabel("This should not happen.");
+            tabbedPane.removeAll();
+            tabbedPane.add(MAIN_TITLE, main);
+            tabbedPane.add(LAST_TITLE, last);
+            for (ClNode n : convo.getNodes()) {
+                addReplaceTab(n);
+            }
             frame.repaint();
         } catch (Exception ex) {
             Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
@@ -333,12 +354,10 @@ public class PersonAI {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
             if (tabbedPane.getTitleAt(i).equals(title)) {
                 tabbedPane.setComponentAt(i, comp);
-                tabbedPane.setSelectedIndex(i);
                 return;
             }
         }
         tabbedPane.add(title, comp);
-        tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
     }
 
     public final synchronized void putOnBar(Component component) {
@@ -419,9 +438,7 @@ public class PersonAI {
             ClNode node = convo.getNode(e);
             System.out.println("Sel: " + node);
             if (SwingUtilities.isLeftMouseButton(e)) {
-                if (!convo.selectNode(node, dotViewer)) {
-                    addReplaceTab(node);
-                }
+                convo.selectNode(node, dotViewer);
             } else {
                 convo.unselectNode(node, dotViewer);
                 closeTab(node);
@@ -508,12 +525,9 @@ public class PersonAI {
                 ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
                 q.setUserObj(question);
                 convo.addAnswer(q, tagLine, answer);
-                BufferedImage render = convo.render();
-                dot.putImage(render);
-                convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
                 topic.setText(new PandocConverter().convertMarkdownToText132(answer));
                 publish("0:Ready for next question");
-                frame.repaint();
+                rebuild();
             } catch (Exception e) {
                 this.failure = e;
             }
@@ -524,7 +538,7 @@ public class PersonAI {
         @Override
         protected void process(List<String> chunks) {
             synchronized (lastInteraction) {
-                setTabText("Last Interaction", lastInteraction.toString());
+                setTabText(LAST_TITLE, lastInteraction.toString());
                 tabbedPane.setSelectedIndex(0);
             }
             for (String msg : chunks) {
