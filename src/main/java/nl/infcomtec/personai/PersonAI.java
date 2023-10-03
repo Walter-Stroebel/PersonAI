@@ -55,7 +55,7 @@ import nl.infcomtec.tools.PandocConverter;
  */
 public class PersonAI {
 
-    public static Font font = new Font(Font.SERIF, Font.PLAIN, 24); /// < This is the base of all scaling code.
+    public static Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 24); /// < This is the base of all scaling code.
     public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS specific issues.
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
@@ -70,7 +70,11 @@ public class PersonAI {
     private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
     public static final String INS_FILENAME = "instructions.json";
     private static final String MAIN_TITLE = "Main";
+    private static final String GRAPH_TITLE = "Graph";
     private static final String LAST_TITLE = "Last Interaction";
+    private Component main;
+    private Component graph;
+    private Component last;
 
     /**
      * Starting point.
@@ -143,11 +147,11 @@ public class PersonAI {
         frame.getContentPane().add(toolBar, BorderLayout.NORTH);
         // Add JTabbedPane to the center
         frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-        JPanel main = new JPanel(new BorderLayout());
+        JPanel grPane = new JPanel(new BorderLayout());
         dotViewer = new ImageViewer(dot);
         JPanel viewPanel = dotViewer.getScalePanPanel();
         dot.addListener(new GraphMouse("Mouse"));
-        main.add(viewPanel, BorderLayout.CENTER);
+        grPane.add(viewPanel, BorderLayout.CENTER);
         JPanel box = new JPanel(new BorderLayout());
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
@@ -155,10 +159,13 @@ public class PersonAI {
         box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
         box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
-        JScrollPane inpPan = new JScrollPane(userInput = new JTextArea(20, 64));
+        userInput = new JTextArea(20, 64);
+        userInput.setToolTipText("Enter or paste some text or a question for the AI.");
+        JScrollPane inpPan = new JScrollPane(userInput);
         userInput.setLineWrap(true);
         userInput.setWrapStyleWord(true);
-        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
+        inpPan.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.BLUE, 5),
                 "Type a message here:"));
         topic = new JTextArea();
         JPanel south = buildSouthPanel(dm);
@@ -182,12 +189,17 @@ public class PersonAI {
         }
         box.add(pan, BorderLayout.CENTER);
         inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
-                "Type a message here (optional):"));
+                "Text input:"));
         box.add(inpPan, BorderLayout.NORTH);
         box.add(new JButton(new SubmitAction("Send to AI/LLM")), BorderLayout.SOUTH);
-        main.add(box, BorderLayout.EAST);
-        main.add(south, BorderLayout.SOUTH);
+        grPane.add(box, BorderLayout.EAST);
+        grPane.add(south, BorderLayout.SOUTH);
+        ClNode start = new ClNode(convo, "Start");
+        convo.addNode(start);
+        start.appendUserObj(new PandocConverter().convertMarkdownToHTML(getResource("start.md")));
+        main = addReplaceTab(start);
         tabbedPane.addTab(MAIN_TITLE, main);
+        tabbedPane.addTab(GRAPH_TITLE, grPane);
         addButtons();
     }
 
@@ -304,28 +316,47 @@ public class PersonAI {
         }));
     }
 
+    public static String getResource(String name) {
+        String path = name.startsWith("/") ? name : "/" + name;
+        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(PersonAI.class.getResourceAsStream(path)))) {
+            StringBuilder sb = new StringBuilder();
+            for (String s = bfr.readLine(); s != null; s = bfr.readLine()) {
+                sb.append(s).append(EOLN);
+            }
+            return sb.toString();
+        } catch (Exception ex) {
+            return "Reading from resource failed: " + ex.getMessage();
+        }
+    }
+
     private void rebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
             BufferedImage render = convo.render();
             dot.putImage(render);
             convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
-            Component main=null;
-            Component last=null;
             for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
                 String tit = tabbedPane.getTitleAt(i);
                 if (tit.equals(MAIN_TITLE)) {
-                    main=tabbedPane.getComponentAt(i);
+                    main = tabbedPane.getComponentAt(i);
                 }
                 if (tit.equals(LAST_TITLE)) {
-                    last=tabbedPane.getComponentAt(i);
+                    last = tabbedPane.getComponentAt(i);
+                }
+                if (tit.equals(GRAPH_TITLE)) {
+                    graph = tabbedPane.getComponentAt(i);
                 }
             }
-            if (null==main)main=new JLabel("This should not happen.");
-            if (null==last)last=new JLabel("This should not happen.");
             tabbedPane.removeAll();
-            tabbedPane.add(MAIN_TITLE, main);
-            tabbedPane.add(LAST_TITLE, last);
+            if (null != main) {
+                tabbedPane.add(MAIN_TITLE, main);
+            }
+            if (null != graph) {
+                tabbedPane.add(GRAPH_TITLE, graph);
+            }
+            if (null != last) {
+                tabbedPane.add(LAST_TITLE, last);
+            }
             for (ClNode n : convo.getNodes()) {
                 addReplaceTab(n);
             }
@@ -413,7 +444,7 @@ public class PersonAI {
         }
     }
 
-    private void addReplaceTab(ClNode node) {
+    private NodePanel addReplaceTab(ClNode node) {
         NodePanel panel = new NodePanel(this, node, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -425,6 +456,7 @@ public class PersonAI {
                 rebuild();
             }
         });
+        return panel;
     }
 
     private class GraphMouse extends ImageObject.ImageObjectListener {
@@ -525,7 +557,7 @@ public class PersonAI {
                 ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
                 q.setUserObj(question);
                 convo.addAnswer(q, tagLine, answer);
-                topic.setText(new PandocConverter().convertMarkdownToText132(answer));
+                topic.setText(new PandocConverter().convertMarkdownToText(answer));
                 publish("0:Ready for next question");
                 rebuild();
             } catch (Exception e) {

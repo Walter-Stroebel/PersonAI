@@ -81,7 +81,6 @@ public class Conversation extends ClGraph {
     }
     
     public void addAnswer(ClNode q, String tagLine, String answer) {
-        System.out.println("Answer: [" + answer + "]");
         String[] lines = answer.split("\n");
         LinkedList<StringBuilder> sections = new LinkedList<>();
         StringBuilder section = new StringBuilder();
