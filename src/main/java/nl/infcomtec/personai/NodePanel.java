@@ -94,7 +94,6 @@ public class NodePanel extends JPanel {
      */
     private void initComponents() {
         setLayout(new java.awt.BorderLayout());
-
         editorPane.setEditable(false);
         if (editorPane.isEditable()) {
             throw new RuntimeException("No!");
@@ -102,15 +101,13 @@ public class NodePanel extends JPanel {
         editorPane.setContentType("text/html");
         editorPane.setFont(dFont.get());
         jScrollPane1.setViewportView(editorPane);
-
         add(jScrollPane1, java.awt.BorderLayout.CENTER);
-
         jPanel1.setLayout(new GridBagLayout());
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0;
         gc.gridy = 0;
         gc.insets = new Insets(5, 5, 5, 5);
-        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.anchor=GridBagConstraints.WEST;
         tfLabel.setColumns(20);
         tfLabel.setText(node.label);
         enclosed(gc, "Display label", jPanel1, tfLabel);
@@ -119,7 +116,6 @@ public class NodePanel extends JPanel {
         jSlider1.setMinimum(6);
         jSlider1.setToolTipText("Change the size of the displayed text.");
         jSlider1.setValue(24);
-
         jSlider1.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent evt) {
@@ -127,16 +123,22 @@ public class NodePanel extends JPanel {
             }
         });
         enclosed(gc, "Font size", jPanel1, jSlider1);
-
         cbShapes.setEditable(true);
         cbShapes.setModel(new DefaultComboBoxModel<>(new String[]{"ellipse", "box", "circle", "diamond", "rectangle", "plaintext", "triangle", "hexagon", "octagon", "parallelogram"}));
         enclosed(gc, "Shape", jPanel1, cbShapes);
-
         btApply.setText("Apply");
         btApply.addActionListener(new java.awt.event.ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btApplyActionPerformed(evt);
+                node.label = tfLabel.getText();
+                node.setShape(cbShapes.getSelectedItem().toString());
+                String text = editorPane.getText();
+                if (text.startsWith("<html>")) {
+                    node.setUserObj(new PandocConverter().convertHTMLToMarkdown(text));
+                } else {
+                    node.setUserObj(text);
+                }
+                rebuild.actionPerformed(null);
             }
         });
         JButton btReset = new JButton(new AbstractAction("Clear") {
@@ -150,7 +152,8 @@ public class NodePanel extends JPanel {
         });
         enclosed(gc, "Actions", jPanel1, btApply, btReset);
         jPanel1.add(Box.createVerticalGlue());
-
+        gc.gridwidth=2;
+        jPanel1.add(owner.buildSouthPanel(), gc);
         add(jPanel1, java.awt.BorderLayout.EAST);
     }
 
@@ -165,18 +168,6 @@ public class NodePanel extends JPanel {
         pn.add(ip, gc);
         gc.gridx = 0;
         gc.gridy++;
-    }
-
-    private void btApplyActionPerformed(java.awt.event.ActionEvent evt) {
-        node.label = tfLabel.getText();
-        node.setShape(cbShapes.getSelectedItem().toString());
-        String text = editorPane.getText();
-        if (text.startsWith("<html>")) {
-            node.setUserObj(new PandocConverter().convertHTMLToMarkdown(text));
-        } else {
-            node.setUserObj(text);
-        }
-        rebuild.actionPerformed(null);
     }
 
     private void jSlider1StateChanged(ChangeEvent evt) {

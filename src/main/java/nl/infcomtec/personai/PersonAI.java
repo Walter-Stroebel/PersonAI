@@ -59,6 +59,8 @@ public class PersonAI {
     public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS specific issues.
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
+    public static final File LAST_EXIT = new File(PersonAI.WORK_DIR, "LastExit");
+    public static final File LAST_CLEAR = new File(PersonAI.WORK_DIR, "LastClear");
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure GSon.
     public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on another OS.
     public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); /// < This might vary on another OS.
@@ -75,6 +77,9 @@ public class PersonAI {
     private Component main;
     private Component graph;
     private Component last;
+    public static final GraphicsEnvironment grEnv = GraphicsEnvironment.getLocalGraphicsEnvironment();
+    public static final GraphicsDevice defaultScreen = grEnv.getDefaultScreenDevice();
+    public static final DisplayMode displayMode = defaultScreen.getDisplayMode();
 
     /**
      * Starting point.
@@ -101,11 +106,11 @@ public class PersonAI {
     public Conversation convo = new Conversation();
     private ImageViewer dotViewer;
     private Vagrant vagrant;
-    private JTextArea userInput;
     private JLabel costLabel;
-    private JProgressBar progressBar;
     private JTextArea progressMsg;
     private ButtonGroup insGrp;
+    private final JProgressBar working = new JProgressBar();
+    private long workingStart;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -152,23 +157,8 @@ public class PersonAI {
         JPanel viewPanel = dotViewer.getScalePanPanel();
         dot.addListener(new GraphMouse("Mouse"));
         grPane.add(viewPanel, BorderLayout.CENTER);
-        JPanel box = new JPanel(new BorderLayout());
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
-        DisplayMode dm = defaultScreen.getDisplayMode();
-        box.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
-        box.setPreferredSize(new Dimension(dm.getWidth() / 4, dm.getHeight() * 70 / 100));
         JPanel pan = new JPanel(new FlowLayout());
-        userInput = new JTextArea(20, 64);
-        userInput.setToolTipText("Enter or paste some text or a question for the AI.");
-        JScrollPane inpPan = new JScrollPane(userInput);
-        userInput.setLineWrap(true);
-        userInput.setWrapStyleWord(true);
-        inpPan.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(Color.BLUE, 5),
-                "Type a message here:"));
         topic = new JTextArea();
-        JPanel south = buildSouthPanel(dm);
         ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
         pan.add(new JLabel("Pick an operation: "));
         insGrp = new ButtonGroup();
@@ -187,51 +177,47 @@ public class PersonAI {
             pan.add(jb);
             insGrp.add(jb);
         }
-        box.add(pan, BorderLayout.CENTER);
-        inpPan.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5),
-                "Text input:"));
-        box.add(inpPan, BorderLayout.NORTH);
-        box.add(new JButton(new SubmitAction("Send to AI/LLM")), BorderLayout.SOUTH);
-        grPane.add(box, BorderLayout.EAST);
-        grPane.add(south, BorderLayout.SOUTH);
+        JButton submit = new JButton(new SubmitAction("Send to AI/LLM"));
         ClNode start = new ClNode(convo, "Start");
         convo.addNode(start);
-        start.appendUserObj(new PandocConverter().convertMarkdownToHTML(getResource("start.md")));
         main = addReplaceTab(start);
         tabbedPane.addTab(MAIN_TITLE, main);
         tabbedPane.addTab(GRAPH_TITLE, grPane);
         addButtons();
     }
 
-    private JPanel buildSouthPanel(DisplayMode dm) {
-        JPanel south = new JPanel(new BorderLayout());
-        {
-            JScrollPane topPan = new JScrollPane(topic);
-            topPan.setBorder(
-                    BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Selected text:"));
-            topPan.setPreferredSize(new Dimension(dm.getWidth() * 70 / 100, dm.getHeight() * 30 / 100));
-            south.add(topPan, BorderLayout.CENTER);
-            JPanel statusPanel = new JPanel(new BorderLayout());
-            statusPanel.setPreferredSize(new Dimension(dm.getWidth() * 30 / 100, dm.getHeight() * 30 / 100));
-            statusPanel.setBorder(
-                    BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.BLUE, 5), "Status"));
-            progressBar = new JProgressBar(JProgressBar.HORIZONTAL, 0, 3);
-            progressMsg = new JTextArea("");
-            costLabel = new JLabel("Cost: $0.00");
-
-            statusPanel.add(progressBar, BorderLayout.NORTH);
-            statusPanel.add(new JScrollPane(progressMsg), BorderLayout.CENTER);
-            statusPanel.add(costLabel, BorderLayout.SOUTH);
-
-            south.add(statusPanel, BorderLayout.EAST);
-        }
-        return south;
+    public JPanel buildSouthPanel() {
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setPreferredSize(new Dimension(displayMode.getWidth() * 20 / 100, displayMode.getHeight() * 20 / 100));
+        statusPanel.setBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(Color.BLUE, 5), "Status"));
+        progressMsg = new JTextArea("");
+        costLabel = new JLabel("Cost: $0.00");
+        statusPanel.add(new JScrollPane(progressMsg), BorderLayout.CENTER);
+        statusPanel.add(costLabel, BorderLayout.SOUTH);
+        return statusPanel;
     }
 
     private void addButtons() {
+        JButton green = new JButton(new AbstractAction("Welcome!") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                convo.save(LAST_CLEAR, gson);
+                convo.clear();
+                ClNode start = new ClNode(convo, "Start");
+                convo.addNode(start);
+                start.appendUserObj(new PandocConverter().convertMarkdownToHTML(getResource("start.md")));
+                main = addReplaceTab(start);
+                rebuild();
+            }
+        });
+        green.setForeground(Color.GREEN.darker());
+        putOnBar(green);
         putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
+                convo.save(LAST_EXIT, gson);
                 System.exit(0);
             }
         }));
@@ -274,12 +260,12 @@ public class PersonAI {
                 }
             }
         }));
-        putOnBar(new JButton(new AbstractAction("Clear") {
+        putOnBar(new JButton(new AbstractAction("Clear All") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                frame.dispose();
-                initGUI();
-                setVisible();
+                convo.save(LAST_CLEAR, gson);
+                convo.clear();
+                rebuild();
             }
         }));
         putOnBar(new JButton(new AbstractAction("Start Vagrant") {
@@ -314,6 +300,8 @@ public class PersonAI {
                 }
             }
         }));
+        working.setName("prog");
+        putOnBar(working);
     }
 
     public static String getResource(String name) {
@@ -329,7 +317,23 @@ public class PersonAI {
         }
     }
 
+    /**
+     * Rebuild all.
+     */
     private void rebuild() {
+        workingStart = System.nanoTime();
+        working.setIndeterminate(true);
+        SwingWorker worker = new SwingWorker() {
+            @Override
+            protected Object doInBackground() throws Exception {
+                doRebuild();
+                return null;
+            }
+        };
+        worker.execute();
+    }
+
+    private void doRebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
             BufferedImage render = convo.render();
@@ -337,9 +341,6 @@ public class PersonAI {
             convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
             for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
                 String tit = tabbedPane.getTitleAt(i);
-                if (tit.equals(MAIN_TITLE)) {
-                    main = tabbedPane.getComponentAt(i);
-                }
                 if (tit.equals(LAST_TITLE)) {
                     last = tabbedPane.getComponentAt(i);
                 }
@@ -348,6 +349,7 @@ public class PersonAI {
                 }
             }
             tabbedPane.removeAll();
+            main = addReplaceTab(convo.getFirstNode());
             if (null != main) {
                 tabbedPane.add(MAIN_TITLE, main);
             }
@@ -364,6 +366,9 @@ public class PersonAI {
         } catch (Exception ex) {
             Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        working.setIndeterminate(false);//.running.set(false);
+        working.setStringPainted(true);
+        working.setString(String.format("%.3f s", (System.nanoTime() - workingStart) / 1E9));
     }
 
     private void setTabText(String title, String text) {
@@ -488,10 +493,11 @@ public class PersonAI {
 
         @Override
         public void actionPerformed(ActionEvent ae) {
-            StringBuilder sb = convo.getSelectedText(userInput.getText());
+            StringBuilder sb = convo.getSelectedText("");
             String question = sb.toString().trim();
             if ((!question.isEmpty())) {
-                progressBar.setIndeterminate(true); // Sets the progress bar to indeterminate while processing
+                workingStart = System.nanoTime();
+                working.setIndeterminate(true);
                 progressMsg.setText("");
                 ApiRequestWorker worker = new ApiRequestWorker(question);
                 worker.execute();
@@ -535,7 +541,6 @@ public class PersonAI {
                 publish("2:Asking LLM for tagline");
                 String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
                 convo.clearSelection();
-                userInput.setText("");
                 insGrp.clearSelection();
                 // XXX cost calculation
                 for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
@@ -558,8 +563,8 @@ public class PersonAI {
                 q.setUserObj(question);
                 convo.addAnswer(q, tagLine, answer);
                 topic.setText(new PandocConverter().convertMarkdownToText(answer));
+                doRebuild();
                 publish("0:Ready for next question");
-                rebuild();
             } catch (Exception e) {
                 this.failure = e;
             }
@@ -577,12 +582,9 @@ public class PersonAI {
                 if (msg.indexOf(':') == 1) {
                     progressMsg.append(EOLN);
                     progressMsg.append(msg.substring(2));
-                    progressBar.setIndeterminate(false);
-                    progressBar.setValue(Integer.parseInt(msg.substring(0, 1)));
                 } else {
                     progressMsg.append(EOLN);
                     progressMsg.append(msg);
-                    progressBar.setIndeterminate(true);
                 }
             }
         }

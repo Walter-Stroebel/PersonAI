@@ -263,4 +263,8 @@ public class ClGraph {
         return null;
     }
 
+    public ClNode getFirstNode() {
+        return nodeMap.isEmpty()?null:nodeMap.firstEntry().getValue();
+    }
+
 }
