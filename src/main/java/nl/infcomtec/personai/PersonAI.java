@@ -17,10 +17,15 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -60,6 +65,7 @@ public class PersonAI {
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
     public static final File LAST_EXIT = new File(PersonAI.WORK_DIR, "LastExit");
     public static final File LAST_CLEAR = new File(PersonAI.WORK_DIR, "LastClear");
+    public static final File CONFIG_FILE = new File(PersonAI.WORK_DIR, "config.json");
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure GSon.
     public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on another OS.
     public static final File VAGRANT_KEY = new File(VAGRANT_DIR, ".vagrant/machines/default/virtualbox/private_key"); /// < This might vary on another OS.
@@ -79,22 +85,53 @@ public class PersonAI {
     public static final GraphicsEnvironment grEnv = GraphicsEnvironment.getLocalGraphicsEnvironment();
     public static final GraphicsDevice defaultScreen = grEnv.getDefaultScreenDevice();
     public static final DisplayMode displayMode = defaultScreen.getDisplayMode();
+    public static Config config;
 
     /**
      * Starting point.
-     *
      *
      * @param args
      * @throws Exception
      */
     public static void main(String[] args) throws Exception {
-        font = new Font(Font.SANS_SERIF, Font.PLAIN, 24);
-        PersonAI.WORK_DIR.mkdirs(); // in case it doesn't
-        if (!PersonAI.WORK_DIR.exists()) {
-            System.err.println("Cannot access nor create work directory?");
+        doConfig();
+        new PersonAI();
+    }
+
+    private static void doConfig() {
+        WORK_DIR.mkdirs(); // in case it doesn't
+        if (!WORK_DIR.exists()) {
+            System.err.println("Cannot access nor create work directory? " + WORK_DIR);
             System.exit(1);
         }
-        new PersonAI();
+        if (CONFIG_FILE.exists()) {
+            try ( FileReader fr = new FileReader(CONFIG_FILE)) {
+                config = gson.fromJson(fr, Config.class);
+            } catch (Exception any) {
+                config = null;
+            }
+        }
+        if (null == config) {
+            config = new Config();
+            config.darkMode = true;
+            font = new Font(Font.SANS_SERIF, Font.PLAIN, Math.max(displayMode.getHeight() / 90, 11));
+            config.fontName = font.getFontName();
+            config.fontSize = font.getSize();
+            config.fontStyle = font.getStyle();
+            saveConfig();
+        } else {
+            font = config.getFont();
+        }
+    }
+
+    public static void saveConfig() {
+        try ( FileWriter fw = new FileWriter(CONFIG_FILE)) {
+            gson.toJson(config, fw);
+            fw.write(EOLN);
+        } catch (IOException ex) {
+            System.err.println("Cannot write to work directory? " + WORK_DIR + " " + ex.getMessage());
+            System.exit(1);
+        }
     }
     public ImageObject dot;
     public JFrame frame;
@@ -116,19 +153,25 @@ public class PersonAI {
         setVisible();
     }
 
-    private void setFont() {
-        try ( BufferedReader bfr = new BufferedReader(
-                new InputStreamReader(getClass().getResourceAsStream("/uimanager.fontKeys")))) {
-            if (null != frame) {
-                frame.dispose();
+    private void setUI() {
+        Set<Map.Entry<Object, Object>> entries = new HashSet(UIManager.getLookAndFeelDefaults().entrySet());
+        for (Map.Entry<Object, Object> entry : entries) {
+            if (entry.getValue() instanceof Font) {
+                UIManager.put(entry.getKey(), font);
+            } else if (entry.getValue() instanceof Color) {
+                UIManager.put(entry.getKey(), config.mapTo((Color) entry.getValue()));
             }
-            for (String key = bfr.readLine(); null != key; key = bfr.readLine()) {
-                UIManager.put(key, font);
-            }
-        } catch (IOException ex) {
-            // we tried ... might not be fatal
-            System.err.println(ex.getMessage());
         }
+        /* TODO create a settings thingy
+        final JDialog editColors = config.editColors();
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                editColors.setVisible(true);
+            }
+        });
+         */
+        saveConfig();
     }
 
     private void initGUI() {
@@ -137,7 +180,7 @@ public class PersonAI {
         } catch (IOException ex) {
             Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
         }
-        setFont();
+        setUI();
         frame = new JFrame("PersonAI");
         toolBar = new JToolBar();
         tabbedPane = new JTabbedPane();
