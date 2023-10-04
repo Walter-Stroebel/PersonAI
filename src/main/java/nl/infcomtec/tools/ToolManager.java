@@ -28,7 +28,6 @@ import java.util.List;
  *  \endcode
  *  
  */
-
 /**
  * Management class for using external system utilities.
  *
@@ -52,6 +51,7 @@ import java.util.List;
  *    }
  * }
  * </pre>
+ *
  * @author Walter Stroebel
  */
 public abstract class ToolManager implements Runnable {

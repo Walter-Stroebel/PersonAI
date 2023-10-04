@@ -135,6 +135,9 @@ public class ImageObject extends Image {
         }
 
         int numThreads = Runtime.getRuntime().availableProcessors() - 2; // Number of threads to use, leaving some cores for routine work.
+        if (numThreads < 1) {
+            numThreads = 1;
+        }
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 
         int rowsPerThread = getHeight() / numThreads;
@@ -171,8 +174,8 @@ public class ImageObject extends Image {
         } catch (InterruptedException ex) {
             throw new RuntimeException("We are asked to stop?", ex);
         }
-        System.out.format("calculateClosestAreas W=%d,H=%d,P=%d,T=%.2f ms\n", 
-                getWidth(), getHeight(), pois.size(), (System.nanoTime() - nanos)/1e6);
+        System.out.format("calculateClosestAreas W=%d,H=%d,P=%d,T=%.2f ms\n",
+                getWidth(), getHeight(), pois.size(), (System.nanoTime() - nanos) / 1e6);
         return ret;
     }
 

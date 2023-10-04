@@ -23,7 +23,6 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.imageio.ImageIO;
-import nl.infcomtec.graphs.ClNode.NodeJSON;
 import nl.infcomtec.simpleimage.BitShape;
 import nl.infcomtec.tools.ToolManager;
 
@@ -88,7 +87,7 @@ public class ClGraph {
         tm.run();
     }
 
-    public synchronized List<ClNode> getNodes() {
+    protected synchronized List<ClNode> getNodes() {
         LinkedList<ClNode> ret = new LinkedList<>();
         for (ClNode n : nodeMap.values()) {
             if (!(n instanceof ClEdge)) {
@@ -98,7 +97,7 @@ public class ClGraph {
         return ret;
     }
 
-    public synchronized List<ClEdge> getEdges() {
+    protected synchronized List<ClEdge> getEdges() {
         LinkedList<ClEdge> ret = new LinkedList<>();
         for (ClNode n : nodeMap.values()) {
             if (n instanceof ClEdge) {
@@ -264,7 +263,7 @@ public class ClGraph {
     }
 
     public ClNode getFirstNode() {
-        return nodeMap.isEmpty()?null:nodeMap.firstEntry().getValue();
+        return nodeMap.isEmpty() ? null : nodeMap.firstEntry().getValue();
     }
 
 }

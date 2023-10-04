@@ -4,7 +4,6 @@ package nl.infcomtec.personai;
  *
  * @author walter
  */
-
 public class Instruction {
 
     public final String description;

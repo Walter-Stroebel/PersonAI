@@ -54,9 +54,9 @@ Tools and Buttons
 On the right, you will find these buttons:
 ------------------------------------------
 
-1.  **Display Label**: What this node is or will be called.
+-  **Display Label**: What this node is or will be called.
 
-2.  **Edit the Text**: Edit the text in the main box. Try it with this
+-  **Edit the Text**: Edit the text in the main box. Try it with this
     introduction. Don't worry; this will be restored when you restart
     the tool.
 
@@ -64,32 +64,34 @@ On the right, you will find these buttons:
     Markdown, showing it as HTML, and then copying it using the
     clipboard to, e.g., Notepad or Pluma. Try it.*
 
-3.  **Font Size**: Changes the size of the text in the main box.
+-  **Font Size**: Changes the size of the text in the main box.
 
-4.  **Shape**: Change the shape of this node.
+-  **Shape**: Change the shape of this node.
 
-5.  **Apply**: The changes will be applied to the selected node, or a
+-  **Apply**: The changes will be applied to the selected node, or a
     new one will be created.
 
-6.  **Clear**: Clears the text in the main box (this text). If you do so
+   *If you edited the text, it will **NOT** be saved unless you also **Apply**.* 
+
+-  **Clear**: Clears the text in the main box (this text). If you do so
     by error, simply do not also press **Apply**.
 
 On the top, you will find these buttons:
 ----------------------------------------
 
-1.  **Welcome!**: In green, replaces the contents with this text. No
+-  **Welcome!**: In green, replaces the contents with this text. No
     worries if that was not what you intended to do, use Load and fetch
     the file "LastClear".
-2.  **Exit**: Close down the tool. No questions asked, but a file
+-  **Exit**: Close down the tool. No questions asked, but a file
     "LastExit" will be created.
-3.  **Bigger Text**: Make all text bigger.
-4.  **Smaller Text**: Make all text smaller.
-5.  **Save**: Save everything to a file.
-6.  **Load**: Load everything from a file.
-7.  **Clear All**: Deletes everything. No questions asked, but a file
+-  **Bigger Text**: Make all text bigger.
+-  **Smaller Text**: Make all text smaller.
+-  **Save**: Save everything to a file.
+-  **Load**: Load everything from a file.
+-  **Clear All**: Deletes everything. No questions asked, but a file
     "LastClear" will be created.
-8.  **Start Vagrant**: Starts the Vagrant tool. This is an advanced
+-  **Start Vagrant**: Starts the Vagrant tool. This is an advanced
     option.
-9.  **Check Vagrant Logs**: This is an advanced option.
-10.  **Stop Vagrant**: Stops the Vagrant tool. This is an advanced
+-  **Check Vagrant Logs**: This is an advanced option.
+-  **Stop Vagrant**: Stops the Vagrant tool. This is an advanced
     option.

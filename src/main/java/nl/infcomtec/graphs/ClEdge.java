@@ -15,18 +15,18 @@ public class ClEdge extends ClNode {
         super(from.graph, label, fgColor, bgColor);
         this.fromNode = from;
         this.toNode = to;
-        shape="edge";
+        shape = "edge";
     }
 
     public ClEdge(ClNode from, ClNode to, String label) {
         super(from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
         this.fromNode = from;
         this.toNode = to;
-        shape="edge";
+        shape = "edge";
     }
 
     public ClEdge(ClGraph g, NodeJSON nj) {
-        super(g,nj);
+        super(g, nj);
         this.fromNode = g.getNode(nj.from);
         this.toNode = g.getNode(nj.to);
     }
@@ -43,10 +43,10 @@ public class ClEdge extends ClNode {
 
     @Override
     public String generateDotRepresentation() {
-        String n1= "N"+fromNode.getId();
-        String n2= "N"+toNode.getId();
+        String n1 = "N" + fromNode.getId();
+        String n2 = "N" + toNode.getId();
         StringBuilder sb = new StringBuilder();
- 
+
         sb.append(n1).append(" -> ").append(n2)
                 .append(" [label=\"").append(label).append("\", ")
                 .append("color=").append(ClGraph.dotColor(foreColor))

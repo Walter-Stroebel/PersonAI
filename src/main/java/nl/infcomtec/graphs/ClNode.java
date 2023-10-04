@@ -112,11 +112,11 @@ public class ClNode {
     /**
      * @return the userObj
      */
-    public Object getUserObj() {
+    protected Object getUserObj() {
         return userObj;
     }
 
-    public String getUserStr() {
+    protected String getUserStr() {
         if (null != userObj) {
             return userObj.toString();
         }
@@ -126,7 +126,7 @@ public class ClNode {
     /**
      * @param userObj the userObj to set
      */
-    public void setUserObj(Object userObj) {
+    protected void setUserObj(Object userObj) {
         this.userObj = userObj;
     }
 
@@ -135,7 +135,7 @@ public class ClNode {
      *
      * @param str String to add or set.
      */
-    public void appendUserObj(String str) {
+    protected void appendUserObj(String str) {
         StringBuilder cur = new StringBuilder(getUserStr());
         cur.append(System.lineSeparator());
         cur.append(str);
@@ -162,24 +162,6 @@ public class ClNode {
         sb.append(", userObj=").append(userObj);
         sb.setLength(Math.min(sb.length(), 100));
         return sb.toString();
-    }
-
-    public static class NodeJSON {
-
-        int fCol;
-        int bCol;
-        String label;
-        String userObj;
-        Integer from;
-        Integer to;
-        String shape;
-        int id;
-
-        public NodeJSON(int id, int fCol, int bCol) {
-            this.id = id;
-            this.fCol = fCol;
-            this.bCol = bCol;
-        }
     }
 
 }

@@ -46,7 +46,6 @@ import javax.swing.UIManager;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
-import nl.infcomtec.tools.PandocConverter;
 
 /**
  * Main class.
@@ -55,7 +54,7 @@ import nl.infcomtec.tools.PandocConverter;
  */
 public class PersonAI {
 
-    public static Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 24); /// < This is the base of all scaling code.
+    public static Font font; /// < This is the base of all scaling code.
     public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS specific issues.
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
@@ -89,6 +88,7 @@ public class PersonAI {
      * @throws Exception
      */
     public static void main(String[] args) throws Exception {
+        font = new Font(Font.SANS_SERIF, Font.PLAIN, 24);
         PersonAI.WORK_DIR.mkdirs(); // in case it doesn't
         if (!PersonAI.WORK_DIR.exists()) {
             System.err.println("Cannot access nor create work directory?");
@@ -100,7 +100,6 @@ public class PersonAI {
     public JFrame frame;
     public JToolBar toolBar;
     public JTabbedPane tabbedPane;
-    private JTextArea topic;
     private Instructions ins;
     private Instruction curIns;
     public Conversation convo = new Conversation();
@@ -114,9 +113,6 @@ public class PersonAI {
 
     public PersonAI() throws IOException {
         initGUI();
-        topic.setText("Welcome to your Personal AI -- PersonAI.\n"
-                + "Enter a question and press the button.\n"
-                + "Note: this is a first draft implementation of a Proof of Concept!");
         setVisible();
     }
 
@@ -157,10 +153,23 @@ public class PersonAI {
         JPanel viewPanel = dotViewer.getScalePanPanel();
         dot.addListener(new GraphMouse("Mouse"));
         grPane.add(viewPanel, BorderLayout.CENTER);
-        JPanel pan = new JPanel(new FlowLayout());
-        topic = new JTextArea();
+        JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
+        ConvoNode start = new ConvoNode(convo, "Start", "box", "");
+        convo.addNode(start);
+        main = addReplaceTab(start).setEditMode(true);
+        tabbedPane.addTab(MAIN_TITLE, main);
+        tabbedPane.addTab(GRAPH_TITLE, grPane);
+        addButtons();
+    }
+
+    public JPanel createInsPanel() {
+        JPanel insPan = new JPanel(new FlowLayout());
+        insPan.setPreferredSize(new Dimension(displayMode.getWidth() * 20 / 100, displayMode.getHeight() * 20 / 100));
+        insPan.setBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(Color.BLUE, 5), "Suggestions"));
         ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
-        pan.add(new JLabel("Pick an operation: "));
+        insPan.add(new JLabel("Pick an operation: "));
         insGrp = new ButtonGroup();
         for (final Instruction i : ins.insList) {
             JCheckBox jb = new JCheckBox(new AbstractAction(i.description) {
@@ -174,16 +183,10 @@ public class PersonAI {
                 }
             });
             jb.setToolTipText(i.prompt);
-            pan.add(jb);
+            insPan.add(jb);
             insGrp.add(jb);
         }
-        JButton submit = new JButton(new SubmitAction("Send to AI/LLM"));
-        ClNode start = new ClNode(convo, "Start");
-        convo.addNode(start);
-        main = addReplaceTab(start);
-        tabbedPane.addTab(MAIN_TITLE, main);
-        tabbedPane.addTab(GRAPH_TITLE, grPane);
-        addButtons();
+        return insPan;
     }
 
     public JPanel buildSouthPanel() {
@@ -205,9 +208,8 @@ public class PersonAI {
             public void actionPerformed(ActionEvent ae) {
                 convo.save(LAST_CLEAR, gson);
                 convo.clear();
-                ClNode start = new ClNode(convo, "Start");
+                ConvoNode start = new ConvoNode(convo, "Start", "box", getResource("start.md"));
                 convo.addNode(start);
-                start.appendUserObj(new PandocConverter().convertMarkdownToHTML(getResource("start.md")));
                 main = addReplaceTab(start);
                 rebuild();
             }
@@ -226,6 +228,7 @@ public class PersonAI {
             public void actionPerformed(ActionEvent ae) {
                 font = new Font(font.getName(), font.getStyle(), font.getSize() + 1);
                 initGUI();
+                rebuild();
                 setVisible();
             }
         }));
@@ -235,6 +238,7 @@ public class PersonAI {
                 if (font.getSize() > 6) {
                     font = new Font(font.getName(), font.getStyle(), font.getSize() - 1);
                     initGUI();
+                    rebuild();
                     setVisible();
                 }
             }
@@ -359,7 +363,7 @@ public class PersonAI {
             if (null != last) {
                 tabbedPane.add(LAST_TITLE, last);
             }
-            for (ClNode n : convo.getNodes()) {
+            for (ConvoNode n : convo.getConvoNodes()) {
                 addReplaceTab(n);
             }
             frame.repaint();
@@ -449,7 +453,7 @@ public class PersonAI {
         }
     }
 
-    private NodePanel addReplaceTab(ClNode node) {
+    private NodePanel addReplaceTab(ConvoNode node) {
         NodePanel panel = new NodePanel(this, node, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -472,7 +476,7 @@ public class PersonAI {
 
         @Override
         public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-            ClNode node = convo.getNode(e);
+            ConvoNode node = (ConvoNode) convo.getNode(e);
             System.out.println("Sel: " + node);
             if (SwingUtilities.isLeftMouseButton(e)) {
                 convo.selectNode(node, dotViewer);
@@ -480,7 +484,7 @@ public class PersonAI {
                 convo.unselectNode(node, dotViewer);
                 closeTab(node);
             }
-            topic.setText(convo.getSelNodeText());
+            // TODO topic.setText(convo.getSelNodeText());
             frame.repaint();
         }
     }
@@ -559,10 +563,9 @@ public class PersonAI {
                     lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
                 }
                 publish("3:Rebuilding graph");
-                ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond");
-                q.setUserObj(question);
+                ConvoNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond", question);
                 convo.addAnswer(q, tagLine, answer);
-                topic.setText(new PandocConverter().convertMarkdownToText(answer));
+                // TODO topic.setText(new PandocConverter().convertMarkdownToText(answer));
                 doRebuild();
                 publish("0:Ready for next question");
             } catch (Exception e) {

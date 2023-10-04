@@ -35,13 +35,14 @@ public class SystemClipboard {
         }
         return "";
     }
-    
+
     /**
      * Put some text on the clipboard.
+     *
      * @param text Text to place.
      */
     public void putText(String text) {
-        StringSelection contents=new StringSelection(text);
+        StringSelection contents = new StringSelection(text);
         clipboard.setContents(contents, contents);
     }
 

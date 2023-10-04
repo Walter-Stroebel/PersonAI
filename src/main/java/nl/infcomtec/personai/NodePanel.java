@@ -23,7 +23,6 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.tools.PandocConverter;
 
 /**
@@ -34,7 +33,7 @@ import nl.infcomtec.tools.PandocConverter;
 public class NodePanel extends JPanel {
 
     private final static AtomicReference<Font> dFont = new AtomicReference<>(PersonAI.font);
-    private final ClNode node;
+    private final ConvoNode node;
     private final Action repAct;
     private final Action rebuild;
     private final PersonAI owner;
@@ -46,16 +45,17 @@ public class NodePanel extends JPanel {
     private final JCheckBox btEdit;
     private final JSlider jSlider1;
     private final JTextField tfLabel;
+    private boolean html = true;
 
     /**
      * Creates new form NodePanel
      *
      * @param owner Owning object.
-     * @param node Clickable node.
+     * @param cvNode Clickable node.
      * @param repAct call this to repaint.
      * @param rebuild call this to rebuild.
      */
-    public NodePanel(PersonAI owner, ClNode node, Action repAct, Action rebuild) {
+    public NodePanel(PersonAI owner, ConvoNode cvNode, Action repAct, Action rebuild) {
         this.btApply = new JButton();
         this.cbShapes = new JComboBox<>();
         this.editorPane = new JEditorPane();
@@ -63,30 +63,21 @@ public class NodePanel extends JPanel {
         this.jScrollPane1 = new JScrollPane();
         this.jSlider1 = new JSlider();
         this.tfLabel = new JTextField();
+        this.node = cvNode;
         this.btEdit = new JCheckBox(new AbstractAction("Edit the text") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                String text = editorPane.getText();
-                if (text.startsWith("<html>")) {
-                    editorPane.setContentType("text/plain");
-                    editorPane.setText(new PandocConverter().convertHTMLToMarkdown(text));
-                    editorPane.setEditable(true);
-                } else {
-                    editorPane.setContentType("text/html");
-                    editorPane.setText(new PandocConverter().convertMarkdownToHTML(text));
-                    editorPane.setEditable(false);
-                }
+                setEditMode(html);
             }
         });
         this.owner = owner;
-        this.node = node;
         this.repAct = repAct;
         this.rebuild = rebuild;
         initComponents();
         editorPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-        editorPane.setText(new PandocConverter().convertMarkdownToHTML(node.getUserStr()));
-        cbShapes.setSelectedItem(node.getShape());
-        owner.setTab(node.getName() + "." + node.label, this);
+        editorPane.setText(node.getHTML());
+        cbShapes.setSelectedItem(cvNode.getShape());
+        owner.setTab(cvNode.getName() + "." + cvNode.label, this);
     }
 
     /**
@@ -107,7 +98,7 @@ public class NodePanel extends JPanel {
         gc.gridx = 0;
         gc.gridy = 0;
         gc.insets = new Insets(5, 5, 5, 5);
-        gc.anchor=GridBagConstraints.WEST;
+        gc.anchor = GridBagConstraints.WEST;
         tfLabel.setColumns(20);
         tfLabel.setText(node.label);
         enclosed(gc, "Display label", jPanel1, tfLabel);
@@ -132,11 +123,10 @@ public class NodePanel extends JPanel {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 node.label = tfLabel.getText();
                 node.setShape(cbShapes.getSelectedItem().toString());
-                String text = editorPane.getText();
-                if (text.startsWith("<html>")) {
-                    node.setUserObj(new PandocConverter().convertHTMLToMarkdown(text));
+                if (html) {
+                    node.setHTML(editorPane.getText());
                 } else {
-                    node.setUserObj(text);
+                    node.setText(editorPane.getText());
                 }
                 rebuild.actionPerformed(null);
             }
@@ -152,7 +142,9 @@ public class NodePanel extends JPanel {
         });
         enclosed(gc, "Actions", jPanel1, btApply, btReset);
         jPanel1.add(Box.createVerticalGlue());
-        gc.gridwidth=2;
+        gc.gridwidth = 2;
+        jPanel1.add(owner.createInsPanel(), gc);
+        gc.gridy++;
         jPanel1.add(owner.buildSouthPanel(), gc);
         add(jPanel1, java.awt.BorderLayout.EAST);
     }
@@ -177,5 +169,23 @@ public class NodePanel extends JPanel {
             editorPane.setFont(dFont.get());
             repAct.actionPerformed(null);
         }
+    }
+
+    public Component setEditMode(boolean b) {
+        if (b && html) {
+            String tt = new PandocConverter().convertHTMLToMarkdown(editorPane.getText());
+            editorPane.setContentType("text/plain");
+            editorPane.setText(tt);
+            editorPane.setEditable(true);
+            html = false;
+        } else if (!html) {
+            String ht = new PandocConverter().convertMarkdownToHTML(editorPane.getText());
+            editorPane.setContentType("text/html");
+            editorPane.setText(ht);
+            editorPane.setEditable(false);
+            html = true;
+        }
+        btEdit.setSelected(b);
+        return this;
     }
 }

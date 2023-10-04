@@ -30,7 +30,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>7</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <exec.mainClass>nl.infcomtec.llmtools.minigw.MiniGW</exec.mainClass>
+        <exec.mainClass>nl.infcomtec.personai.PersonAI</exec.mainClass>
     </properties>
     <build>
         <plugins>
