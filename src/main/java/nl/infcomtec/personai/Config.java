@@ -27,6 +27,10 @@ public class Config {
     public ColorMapping[] colMapping;
     public static TreeMap<Integer, Color> colMap = new TreeMap<>();
     public boolean darkMode;
+    public int w20Per;
+    public int h20Per;
+    public int hFull;
+    public int w20PerDeco;
 
     public Font getFont() {
         return new Font(fontName, fontStyle, fontSize);

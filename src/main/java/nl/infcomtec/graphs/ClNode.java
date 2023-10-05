@@ -112,11 +112,11 @@ public class ClNode {
     /**
      * @return the userObj
      */
-    protected Object getUserObj() {
+    public Object getUserObj() {
         return userObj;
     }
 
-    protected String getUserStr() {
+    public String getUserStr() {
         if (null != userObj) {
             return userObj.toString();
         }
@@ -126,7 +126,7 @@ public class ClNode {
     /**
      * @param userObj the userObj to set
      */
-    protected void setUserObj(Object userObj) {
+    public void setUserObj(Object userObj) {
         this.userObj = userObj;
     }
 
@@ -135,7 +135,7 @@ public class ClNode {
      *
      * @param str String to add or set.
      */
-    protected void appendUserObj(String str) {
+    public void appendUserObj(String str) {
         StringBuilder cur = new StringBuilder(getUserStr());
         cur.append(System.lineSeparator());
         cur.append(str);

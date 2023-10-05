@@ -56,7 +56,12 @@ public class ClGraph {
         uid.set(0);
     }
 
-    public ClNode addNode(ClNode node) {
+    public void addEdge(ClNode n1, ClNode n2, String label) {
+        ClEdge e = new ClEdge(n1, n2, label);
+        nodeMap.put(e.getId(), e);
+    }
+
+    protected ClNode addNode(ClNode node) {
         nodeMap.put(node.getId(), node);
         return node;
     }
@@ -87,7 +92,7 @@ public class ClGraph {
         tm.run();
     }
 
-    protected synchronized List<ClNode> getNodes() {
+    public synchronized List<ClNode> getNodes() {
         LinkedList<ClNode> ret = new LinkedList<>();
         for (ClNode n : nodeMap.values()) {
             if (!(n instanceof ClEdge)) {
@@ -97,7 +102,7 @@ public class ClGraph {
         return ret;
     }
 
-    protected synchronized List<ClEdge> getEdges() {
+    public synchronized List<ClEdge> getEdges() {
         LinkedList<ClEdge> ret = new LinkedList<>();
         for (ClNode n : nodeMap.values()) {
             if (n instanceof ClEdge) {
@@ -136,7 +141,7 @@ public class ClGraph {
         }
     }
 
-    public synchronized void load(File f, Gson gson) {
+    protected synchronized void load(File f, Gson gson) {
         int lid = 0;
         clear();
         try ( FileReader fr = new FileReader(f)) {

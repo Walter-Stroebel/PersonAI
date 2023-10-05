@@ -12,6 +12,7 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -25,6 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -48,6 +50,7 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
+import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
 import nl.infcomtec.simpleimage.ImageViewer;
@@ -76,16 +79,24 @@ public class PersonAI {
     private static final String EOLN = System.lineSeparator();
     private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
     public static final String INS_FILENAME = "instructions.json";
-    private static final String MAIN_TITLE = "Main";
     private static final String GRAPH_TITLE = "Graph";
     private static final String LAST_TITLE = "Last Interaction";
-    private Component main;
     private Component graph;
     private Component last;
-    public static final GraphicsEnvironment grEnv = GraphicsEnvironment.getLocalGraphicsEnvironment();
-    public static final GraphicsDevice defaultScreen = grEnv.getDefaultScreenDevice();
-    public static final DisplayMode displayMode = defaultScreen.getDisplayMode();
     public static Config config;
+    public static final Random random = new Random();
+    public static final int loMark = Integer.parseInt("1000", 36);
+    public static final int hiMark = Integer.parseInt("zzzz", 36);
+
+    public static String getUniqueMark(String text) {
+        while (true) {
+            int mark = random.nextInt(hiMark - loMark + 1) + loMark;
+            String ret = Integer.toString(mark, 36);
+            if (!text.contains(ret)) {
+                return ret;
+            }
+        }
+    }
 
     /**
      * Starting point.
@@ -99,6 +110,9 @@ public class PersonAI {
     }
 
     private static void doConfig() {
+        GraphicsEnvironment grEnv = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice defaultScreen = grEnv.getDefaultScreenDevice();
+        DisplayMode displayMode = defaultScreen.getDisplayMode();
         WORK_DIR.mkdirs(); // in case it doesn't
         if (!WORK_DIR.exists()) {
             System.err.println("Cannot access nor create work directory? " + WORK_DIR);
@@ -118,6 +132,11 @@ public class PersonAI {
             config.fontName = font.getFontName();
             config.fontSize = font.getSize();
             config.fontStyle = font.getStyle();
+            config.w20Per = displayMode.getWidth() * 20 / 100;
+            config.w20PerDeco = displayMode.getWidth() * 20 / 100 - 35;
+            config.h20Per=displayMode.getHeight() * 20 / 100;
+            config.hFull=displayMode.getHeight();
+            
             saveConfig();
         } else {
             font = config.getFont();
@@ -197,20 +216,14 @@ public class PersonAI {
         dot.addListener(new GraphMouse("Mouse"));
         grPane.add(viewPanel, BorderLayout.CENTER);
         JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
-        ConvoNode start = new ConvoNode(convo, "Start", "box", "");
-        convo.addNode(start);
-        main = addReplaceTab(start).setEditMode(true);
-        tabbedPane.addTab(MAIN_TITLE, main);
+        ClNode start = convo.newNode("Start", "box", "");
+        addReplaceTab(start).setEditMode(true);
         tabbedPane.addTab(GRAPH_TITLE, grPane);
         addButtons();
     }
 
-    public JPanel createInsPanel() {
+    public Component createInsPanel() {
         JPanel insPan = new JPanel(new FlowLayout());
-        insPan.setPreferredSize(new Dimension(displayMode.getWidth() * 20 / 100, displayMode.getHeight() * 20 / 100));
-        insPan.setBorder(
-                BorderFactory.createTitledBorder(
-                        BorderFactory.createLineBorder(Color.BLUE, 5), "Suggestions"));
         ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
         insPan.add(new JLabel("Pick an operation: "));
         insGrp = new ButtonGroup();
@@ -229,12 +242,18 @@ public class PersonAI {
             insPan.add(jb);
             insGrp.add(jb);
         }
-        return insPan;
+        insPan.setPreferredSize(new Dimension(config.w20PerDeco, config.hFull));
+        JScrollPane ret = new JScrollPane(insPan);
+        ret.setBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(Color.BLUE, 5), "Suggestions"));
+        ret.setPreferredSize(new Dimension(config.w20Per, config.h20Per));
+        return ret;
     }
 
-    public JPanel buildSouthPanel() {
+    public JPanel interactionPanel() {
         JPanel statusPanel = new JPanel(new BorderLayout());
-        statusPanel.setPreferredSize(new Dimension(displayMode.getWidth() * 20 / 100, displayMode.getHeight() * 20 / 100));
+        statusPanel.setPreferredSize(new Dimension(config.w20Per, config.h20Per));
         statusPanel.setBorder(
                 BorderFactory.createTitledBorder(
                         BorderFactory.createLineBorder(Color.BLUE, 5), "Status"));
@@ -251,10 +270,9 @@ public class PersonAI {
             public void actionPerformed(ActionEvent ae) {
                 convo.save(LAST_CLEAR, gson);
                 convo.clear();
-                ConvoNode start = new ConvoNode(convo, "Start", "box", getResource("start.md"));
-                convo.addNode(start);
-                main = addReplaceTab(start);
-                rebuild();
+                ClNode start = convo.newNode("Start", "box", getResource("start.md"));
+                addReplaceTab(start);
+                rebuildLast();
             }
         });
         green.setForeground(Color.GREEN.darker());
@@ -302,7 +320,7 @@ public class PersonAI {
                 JFileChooser jfc = new JFileChooser(WORK_DIR);
                 int ret = jfc.showOpenDialog(frame);
                 if (ret == JFileChooser.APPROVE_OPTION) {
-                    convo.load(jfc.getSelectedFile(), gson);
+                    convo.loadConvo(jfc.getSelectedFile(), gson);
                     rebuild();
                 }
             }
@@ -380,6 +398,24 @@ public class PersonAI {
         worker.execute();
     }
 
+    /**
+     * Rebuild all.
+     */
+    private void rebuildLast() {
+        workingStart = System.nanoTime();
+        working.setIndeterminate(true);
+        SwingWorker worker = new SwingWorker() {
+            @Override
+            protected Object doInBackground() throws Exception {
+                doRebuild();
+                tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+                return null;
+            }
+        };
+        worker.execute();
+
+    }
+
     private void doRebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
@@ -396,17 +432,13 @@ public class PersonAI {
                 }
             }
             tabbedPane.removeAll();
-            main = addReplaceTab(convo.getFirstNode());
-            if (null != main) {
-                tabbedPane.add(MAIN_TITLE, main);
-            }
             if (null != graph) {
                 tabbedPane.add(GRAPH_TITLE, graph);
             }
             if (null != last) {
                 tabbedPane.add(LAST_TITLE, last);
             }
-            for (ConvoNode n : convo.getConvoNodes()) {
+            for (ClNode n : convo.getNodes()) {
                 addReplaceTab(n);
             }
             frame.repaint();
@@ -436,6 +468,7 @@ public class PersonAI {
     public void setTab(String title, Component comp) {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
             if (tabbedPane.getTitleAt(i).equals(title)) {
+                System.out.println("Dup? " + title);
                 tabbedPane.setComponentAt(i, comp);
                 return;
             }
@@ -496,7 +529,7 @@ public class PersonAI {
         }
     }
 
-    private NodePanel addReplaceTab(ConvoNode node) {
+    private NodePanel addReplaceTab(ClNode node) {
         NodePanel panel = new NodePanel(this, node, new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -511,6 +544,61 @@ public class PersonAI {
         return panel;
     }
 
+    public void splitNode(ClNode node, int rClickPos) {
+        String t = Conversation.getText(node);
+        String t1 = t.substring(0, rClickPos).trim();
+        String t2 = t.substring(rClickPos, t.length()).trim();
+        Conversation.setText(node, t1);
+        ClNode n2 = convo.newNode(node.label + " 2", node.getShape(), t2);
+        convo.addEdge(node, n2, "split");
+        rebuild();
+    }
+
+    public Component graphPanel(ClNode ref) {
+        JPanel links = new JPanel(new GridLayout(0, 4));
+        links.setPreferredSize(new Dimension(config.w20PerDeco, config.h20Per));
+        links.add(new JLabel("Link"));
+        links.add(new JLabel("Node"));
+        links.add(new JLabel("Delete link"));
+        links.add(new JLabel("Delete node"));
+        for (ClEdge e : convo.getEdges()) {
+            if (e.fromNode.equals(ref)) {
+                links.add(new JLabel(e.label));
+                links.add(new JLabel(e.fromNode.label));
+                links.add(new JButton(new AbstractAction("From") {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                    }
+                }));
+                links.add(new JButton(new AbstractAction("?") {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                    }
+                }));
+            }
+            if (e.toNode.equals(ref)) {
+                links.add(new JLabel(e.label));
+                links.add(new JLabel(e.toNode.label));
+                links.add(new JButton(new AbstractAction("To") {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                    }
+                }));
+                links.add(new JButton(new AbstractAction("?") {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                    }
+                }));
+            }
+        }
+        JScrollPane ret = new JScrollPane(links);
+        ret.setBorder(
+                BorderFactory.createTitledBorder(
+                        BorderFactory.createLineBorder(Color.GREEN, 5), "Links"));
+        ret.setPreferredSize(new Dimension(config.w20Per, config.h20Per));
+        return ret;
+    }
+
     private class GraphMouse extends ImageObject.ImageObjectListener {
 
         public GraphMouse(String name) {
@@ -519,13 +607,11 @@ public class PersonAI {
 
         @Override
         public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
-            ConvoNode node = (ConvoNode) convo.getNode(e);
-            System.out.println("Sel: " + node);
+            ClNode node = convo.getNode(e);
             if (SwingUtilities.isLeftMouseButton(e)) {
                 convo.selectNode(node, dotViewer);
             } else {
                 convo.unselectNode(node, dotViewer);
-                closeTab(node);
             }
             // TODO topic.setText(convo.getSelNodeText());
             frame.repaint();
@@ -606,7 +692,7 @@ public class PersonAI {
                     lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
                 }
                 publish("3:Rebuilding graph");
-                ConvoNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond", question);
+                ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond", question);
                 convo.addAnswer(q, tagLine, answer);
                 // TODO topic.setText(new PandocConverter().convertMarkdownToText(answer));
                 doRebuild();

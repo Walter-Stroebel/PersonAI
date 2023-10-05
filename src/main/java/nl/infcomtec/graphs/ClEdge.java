@@ -12,14 +12,14 @@ public class ClEdge extends ClNode {
     public final ClNode toNode;
 
     public ClEdge(ClNode from, ClNode to, String label, Color fgColor, Color bgColor) {
-        super(from.graph, label, fgColor, bgColor);
+        super((ClGraph)from.graph, label, fgColor, bgColor);
         this.fromNode = from;
         this.toNode = to;
         shape = "edge";
     }
 
     public ClEdge(ClNode from, ClNode to, String label) {
-        super(from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
+        super((ClGraph)from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
         this.fromNode = from;
         this.toNode = to;
         shape = "edge";
