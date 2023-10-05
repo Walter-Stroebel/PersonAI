@@ -1,5 +1,3 @@
-/*
- */
 package nl.infcomtec.personai;
 
 import com.google.gson.JsonObject;
@@ -7,10 +5,13 @@ import com.google.gson.JsonObject;
 /**
  * Simple OpenAI API message array element.
  *
- * @author walter
+ * @author Walter Stroebel
  */
 public class Message {
 
+    /**
+     * Message role.
+     */
     public enum ROLES {
         system, user, assistant
     };

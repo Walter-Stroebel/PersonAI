@@ -3,10 +3,21 @@ package nl.infcomtec.tools;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Uses Pandoc to convert between text formats like Markdown and HTML.
+ *
+ * @author Walter Stroebel.
+ */
 public class PandocConverter extends ToolManager {
 
     private String output;
 
+    /**
+     * Markdown to HTML.
+     *
+     * @param markdownInput Markdown.
+     * @return HTML.
+     */
     public String convertMarkdownToHTML(String markdownInput) {
         setInput(markdownInput);
         // Set up the command to run Pandoc
@@ -15,6 +26,12 @@ public class PandocConverter extends ToolManager {
         return output;
     }
 
+    /**
+     * HTML to Markdown.
+     *
+     * @param htmlInput HTML.
+     * @return Markdown.
+     */
     public String convertHTMLToMarkdown(String htmlInput) {
         setInput(htmlInput);
         // Set up the command to run Pandoc
@@ -23,6 +40,12 @@ public class PandocConverter extends ToolManager {
         return output;
     }
 
+    /**
+     * MarkDown to plain text.
+     *
+     * @param markdownInput Markdown.
+     * @return Plain text.
+     */
     public String convertMarkdownToText(String markdownInput) {
         setInput(markdownInput);
         // Set up the command to run Pandoc --wrap=auto  -f markdown -t plain

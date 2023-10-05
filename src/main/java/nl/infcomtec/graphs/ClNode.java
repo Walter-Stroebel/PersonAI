@@ -1,6 +1,7 @@
 package nl.infcomtec.graphs;
 
 import java.awt.Color;
+import javax.swing.tree.DefaultMutableTreeNode;
 
 /**
  * Clickable node base class.
@@ -155,13 +156,34 @@ public class ClNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("ClNode ");
-        sb.append("label=").append(label);
-        sb.append(", id=").append(id);
-        sb.append(", shape=").append(shape);
-        sb.append(", userObj=").append(userObj);
+        sb.append("ClNode");
+        sb.append("\n\tlabel=").append(label);
+        sb.append("\n\tid=").append(id);
+        sb.append("\n\tshape=").append(shape);
+        sb.append("\n\tuserObj=").append(userObj);
         sb.setLength(Math.min(sb.length(), 100));
         return sb.toString();
+    }
+
+    public DefaultMutableTreeNode toTreeNode() {
+        DefaultMutableTreeNode ret=new DefaultMutableTreeNode("NODE");
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("label="+label);
+        ret.add(val);
+        }
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("id="+id);
+        ret.add(val);
+        }
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("shape="+shape);
+        ret.add(val);
+        }
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("text="+userObj.toString());
+        ret.add(val);
+        }
+        return ret;
     }
 
 }

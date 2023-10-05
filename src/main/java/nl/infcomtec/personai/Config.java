@@ -73,6 +73,9 @@ public class Config {
         return new ColorDialog();
     }
 
+    /**
+     * Translate from/to Color.
+     */
     public static class ColorMapping {
 
         public int fromColor;

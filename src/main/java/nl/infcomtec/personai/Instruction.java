@@ -1,8 +1,9 @@
 package nl.infcomtec.personai;
 
 /**
+ * Simple prompt or instruction.
  *
- * @author walter
+ * @author Walter Stroebel.
  */
 public class Instruction {
 

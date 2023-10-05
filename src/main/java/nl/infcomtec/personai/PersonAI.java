@@ -34,6 +34,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -46,7 +47,9 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
@@ -132,15 +135,16 @@ public class PersonAI {
             config.fontName = font.getFontName();
             config.fontSize = font.getSize();
             config.fontStyle = font.getStyle();
+            saveConfig();
+        }
+        if (config.hFull != displayMode.getHeight()) {
             config.w20Per = displayMode.getWidth() * 20 / 100;
             config.w20PerDeco = displayMode.getWidth() * 20 / 100 - 35;
-            config.h20Per=displayMode.getHeight() * 20 / 100;
-            config.hFull=displayMode.getHeight();
-            
+            config.h20Per = displayMode.getHeight() * 20 / 100;
+            config.hFull = displayMode.getHeight();
             saveConfig();
-        } else {
-            font = config.getFont();
         }
+        font = config.getFont();
     }
 
     public static void saveConfig() {
@@ -328,8 +332,16 @@ public class PersonAI {
         putOnBar(new JButton(new AbstractAction("Clear All") {
             @Override
             public void actionPerformed(ActionEvent ae) {
+                convo.push(gson);
                 convo.save(LAST_CLEAR, gson);
                 convo.clear();
+                rebuild();
+            }
+        }));
+        putOnBar(new JButton(new AbstractAction("Undo") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                convo.pop(gson);
                 rebuild();
             }
         }));
@@ -415,7 +427,17 @@ public class PersonAI {
         worker.execute();
 
     }
-
+   /** Method to expand all nodes in a JTree
+    * 
+    * @param tree 
+    */
+    public static void expandAllNodes(JTree tree) {
+        int row = 0;
+        while (row < tree.getRowCount()) {
+            tree.expandRow(row);
+            row++;
+        }
+    }
     private void doRebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
@@ -438,6 +460,10 @@ public class PersonAI {
             if (null != last) {
                 tabbedPane.add(LAST_TITLE, last);
             }
+            JTree tree = convo.toTree();
+            tree.setFont(font);
+            expandAllNodes(tree);
+            tabbedPane.add("Tree", new JScrollPane(tree));
             for (ClNode n : convo.getNodes()) {
                 addReplaceTab(n);
             }
@@ -544,51 +570,50 @@ public class PersonAI {
         return panel;
     }
 
-    public void splitNode(ClNode node, int rClickPos) {
-        String t = Conversation.getText(node);
-        String t1 = t.substring(0, rClickPos).trim();
-        String t2 = t.substring(rClickPos, t.length()).trim();
-        Conversation.setText(node, t1);
-        ClNode n2 = convo.newNode(node.label + " 2", node.getShape(), t2);
+    public void splitNode(ClNode node, String textBeforeSelection, String selectedText, String textAfterSelection) {
+        Conversation.setText(node, textBeforeSelection + textAfterSelection);
+        ClNode n2 = convo.newNode("split", node.getShape(), selectedText);
         convo.addEdge(node, n2, "split");
         rebuild();
+    }
+
+    private Box ops(final ClEdge e) {
+        Box ret = Box.createHorizontalBox();
+        ret.add(new JButton(new AbstractAction("Merge") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                convo.push(gson);
+                e.fromNode.appendUserObj(e.toNode.getUserStr());
+                e.fromNode.label += e.toNode.label;
+                convo.delete(e.toNode);
+                convo.delete(e);
+                rebuild();
+            }
+        }));
+        ret.add(new JButton(new AbstractAction("Delete") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                convo.push(gson);
+                convo.delete(e);
+                rebuild();
+            }
+        }));
+        return ret;
     }
 
     public Component graphPanel(ClNode ref) {
         JPanel links = new JPanel(new GridLayout(0, 4));
         links.setPreferredSize(new Dimension(config.w20PerDeco, config.h20Per));
         links.add(new JLabel("Link"));
-        links.add(new JLabel("Node"));
-        links.add(new JLabel("Delete link"));
-        links.add(new JLabel("Delete node"));
+        links.add(new JLabel("Node1"));
+        links.add(new JLabel("Node2"));
+        links.add(new JLabel("Operations"));
         for (ClEdge e : convo.getEdges()) {
-            if (e.fromNode.equals(ref)) {
-                links.add(new JLabel(e.label));
-                links.add(new JLabel(e.fromNode.label));
-                links.add(new JButton(new AbstractAction("From") {
-                    @Override
-                    public void actionPerformed(ActionEvent ae) {
-                    }
-                }));
-                links.add(new JButton(new AbstractAction("?") {
-                    @Override
-                    public void actionPerformed(ActionEvent ae) {
-                    }
-                }));
-            }
-            if (e.toNode.equals(ref)) {
-                links.add(new JLabel(e.label));
-                links.add(new JLabel(e.toNode.label));
-                links.add(new JButton(new AbstractAction("To") {
-                    @Override
-                    public void actionPerformed(ActionEvent ae) {
-                    }
-                }));
-                links.add(new JButton(new AbstractAction("?") {
-                    @Override
-                    public void actionPerformed(ActionEvent ae) {
-                    }
-                }));
+            if (e.fromNode.equals(ref) || e.toNode.equals(ref)) {
+                links.add(new JTextField(e.label));
+                links.add(new JLabel(e.fromNode.getName()));
+                links.add(new JLabel(e.toNode.getName()));
+                links.add(ops(e));
             }
         }
         JScrollPane ret = new JScrollPane(links);

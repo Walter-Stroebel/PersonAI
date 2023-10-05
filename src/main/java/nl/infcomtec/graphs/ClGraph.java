@@ -7,22 +7,29 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.imageio.ImageIO;
+import javax.swing.JTree;
+import javax.swing.tree.DefaultMutableTreeNode;
 import nl.infcomtec.simpleimage.BitShape;
 import nl.infcomtec.tools.ToolManager;
 
@@ -95,7 +102,7 @@ public class ClGraph {
     public synchronized List<ClNode> getNodes() {
         LinkedList<ClNode> ret = new LinkedList<>();
         for (ClNode n : nodeMap.values()) {
-            if (!(n instanceof ClEdge)) {
+            if (isNode(n)) {
                 ret.add(n);
             }
         }
@@ -112,12 +119,107 @@ public class ClGraph {
         return ret;
     }
 
+    public void push(Gson gson) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        List<NodeJSON> l = new LinkedList<>();
+        for (ClNode n : getNodes()) {
+            NodeJSON nj = new NodeJSON(n.id, n.foreColor.getRGB(), n.backColor.getRGB());
+            nj.label = n.label;
+            if (isNode(n)) {
+                nj.userObj = n.getUserStr();
+                nj.shape = n.shape;
+                l.add(nj);
+            }
+        }
+        for (ClEdge e : getEdges()) {
+            NodeJSON nj = new NodeJSON(e.id, e.foreColor.getRGB(), e.backColor.getRGB());
+            nj.label = e.label;
+            nj.from = e.fromNode.getId();
+            nj.to = e.toNode.getId();
+            l.add(nj);
+        }
+        try ( OutputStreamWriter fw = new OutputStreamWriter(baos)) {
+            gson.toJson(l, fw);
+            fw.write(System.lineSeparator());
+        } catch (IOException ex) {
+            throw new RuntimeException("Error in push", ex);
+        }
+        stack.push(baos.toByteArray());
+    }
+
+    public JTree toTree() {
+        List<ClNode> nodes = getNodes();
+        List<ClEdge> edges = getEdges();
+        // any node being pointed to is not a root
+        for (ClEdge e : getEdges()) {
+            nodes.remove(e.toNode);
+        }
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("root");
+        HashMap<ClNode, DefaultMutableTreeNode> subs = new HashMap<>();
+        for (ClNode node : nodes) {
+            DefaultMutableTreeNode child = node.toTreeNode();
+            root.add(child);
+            for (Iterator<ClEdge> it = edges.iterator(); it.hasNext();) {
+                ClEdge e = it.next();
+                if (e.fromNode.equals(node)) {
+                    DefaultMutableTreeNode c2 = e.toTreeNode();
+                    child.add(c2);
+                    DefaultMutableTreeNode c3 = e.toNode.toTreeNode();
+                    c2.add(c3);
+                    subs.put(e.toNode, c3);
+                    it.remove();
+                }
+            }
+        }
+        boolean err = true;
+        while (!edges.isEmpty()) {
+            nodes=new LinkedList<>(subs.keySet());
+            for (ClNode node : nodes) {
+                DefaultMutableTreeNode child = subs.get(node);
+                for (Iterator<ClEdge> it = edges.iterator(); it.hasNext();) {
+                    ClEdge e = it.next();
+                    if (e.fromNode.equals(node)) {
+                        err = false;
+                        DefaultMutableTreeNode c2 = e.toTreeNode();
+                        child.add(c2);
+                        DefaultMutableTreeNode c3 = e.toNode.toTreeNode();
+                        c2.add(c3);
+                        subs.put(e.toNode, c3);
+                        it.remove();
+                    }
+                }
+            }
+            if (err) {
+                System.err.println("Error: "+edges);
+                break;
+            }
+            err=true;
+        }
+        return new JTree(root);
+    }
+
+    public void delete(ClNode node) {
+        if (isNode(node)) {
+            // also delete any edges linking from or to the node.
+            for (ClEdge e : getEdges()) {
+                if (e.fromNode.equals(node) || e.toNode.equals(node)) {
+                    delete(e);
+                }
+            }
+        }
+        nodeMap.remove(node.id);
+    }
+
+    private static boolean isNode(ClNode node) {
+        return !(node instanceof ClEdge);
+    }
+
     public void save(File f, Gson gson) {
         List<NodeJSON> l = new LinkedList<>();
         for (ClNode n : getNodes()) {
             NodeJSON nj = new NodeJSON(n.id, n.foreColor.getRGB(), n.backColor.getRGB());
             nj.label = n.label;
-            if (!(n instanceof ClEdge)) {
+            if (isNode(n)) {
                 nj.userObj = n.getUserStr();
                 nj.shape = n.shape;
                 l.add(nj);
@@ -147,6 +249,9 @@ public class ClGraph {
         try ( FileReader fr = new FileReader(f)) {
             NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
             for (NodeJSON nj : l) {
+                if (nj.label.length() > 20) {
+                    nj.label = nj.label.substring(0, 20).trim();
+                }
                 lid = Math.max(lid, nj.id);
                 if (null == nj.from) {
                     ClNode n = new ClNode(this, nj);
@@ -159,6 +264,35 @@ public class ClGraph {
             uid.set(lid);
         } catch (IOException ex) {
             throw new RuntimeException("Error reading from " + f, ex);
+        }
+    }
+    private final Stack<byte[]> stack = new Stack<>();
+
+    public synchronized void pop(Gson gson) {
+        if (stack.isEmpty()) {
+            return;
+        }
+        ByteArrayInputStream bais = new ByteArrayInputStream(stack.pop());
+        int lid = 0;
+        clear();
+        try ( InputStreamReader fr = new InputStreamReader(bais)) {
+            NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
+            for (NodeJSON nj : l) {
+                if (nj.label.length() > 20) {
+                    nj.label = nj.label.substring(0, 20).trim();
+                }
+                lid = Math.max(lid, nj.id);
+                if (null == nj.from) {
+                    ClNode n = new ClNode(this, nj);
+                    nodeMap.put(n.id, n);
+                } else {
+                    ClEdge e = new ClEdge(this, nj);
+                    nodeMap.put(e.id, e);
+                }
+            }
+            uid.set(lid);
+        } catch (IOException ex) {
+            throw new RuntimeException("Error in pop", ex);
         }
     }
 

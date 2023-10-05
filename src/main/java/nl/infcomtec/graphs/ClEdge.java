@@ -1,6 +1,7 @@
 package nl.infcomtec.graphs;
 
 import java.awt.Color;
+import javax.swing.tree.DefaultMutableTreeNode;
 
 /**
  *
@@ -34,11 +35,25 @@ public class ClEdge extends ClNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("ClEdge{");
+        sb.append("Edge\n");
+        sb.append("\n\tlabel=").append(label);
         sb.append("\n\tfromNode=").append(fromNode);
         sb.append("\n\ttoNode=").append(toNode);
-        sb.append('}');
         return sb.toString();
+    }
+
+    @Override
+    public DefaultMutableTreeNode toTreeNode() {
+        DefaultMutableTreeNode ret=new DefaultMutableTreeNode("EDGE");
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("label="+label);
+        ret.add(val);
+        }
+        {
+        DefaultMutableTreeNode val=new DefaultMutableTreeNode("id="+id);
+        ret.add(val);
+        }
+        return ret;
     }
 
     @Override

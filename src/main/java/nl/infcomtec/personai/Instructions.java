@@ -11,8 +11,9 @@ import java.io.InputStreamReader;
 import java.util.List;
 
 /**
+ * List of Instruction objects.
  *
- * @author walter
+ * @author Walter Stroebel.
  */
 public class Instructions {
 

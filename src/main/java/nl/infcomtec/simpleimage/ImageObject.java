@@ -62,6 +62,9 @@ public class ImageObject extends Image {
         listeners.add(listener);
     }
 
+    /**
+     * For forwarding.
+     */
     public enum MouseEvents {
         clicked
     };

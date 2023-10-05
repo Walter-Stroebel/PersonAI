@@ -1,12 +1,10 @@
-/*
- */
 package nl.infcomtec.personai;
 
 import com.google.gson.JsonObject;
 
 /**
- *
- * @author walter
+ * Keep track of token usage.
+ * @author Walter Stroebel
  */
 public class Usage {
 
