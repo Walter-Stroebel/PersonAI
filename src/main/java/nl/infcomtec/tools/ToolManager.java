@@ -121,7 +121,6 @@ public abstract class ToolManager implements Runnable {
     }
 
     protected void internalRun() {
-        long nanos = System.nanoTime();
         if (null == pb) {
             throw new RuntimeException(NO_COMMAND_SPECIFIED);
         }
@@ -205,7 +204,6 @@ public abstract class ToolManager implements Runnable {
             // Wait for stdout and stderr threads to complete
             stdoutThread.join();
             stderrThread.join();
-            System.out.format("%s took %.2f\n", pb.command(), (System.nanoTime() - nanos) / 1e9);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

@@ -18,15 +18,20 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Stack;
 import java.util.TreeMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -39,11 +44,142 @@ import nl.infcomtec.tools.ToolManager;
  */
 public class ClGraph {
 
+    public static final String EOLN = System.lineSeparator();
+
     public static String dotColor(Color c) {
         return "\"#" + Integer.toHexString(c.getRGB()).substring(2) + "\"";
     }
+    public static final Random random = new Random();
+    public static final int loMark = Integer.parseInt("1000", 36);
+    public static final int hiMark = Integer.parseInt("zzzz", 36);
+    public static TreeSet<Integer> nbad = new TreeSet(Arrays.asList(new Integer[]{
+        71279, 116021, 116027, 121637, 122344, 126372, 217540, 222638, 255989, 255995, 261605, 262312, 266340, 311924, 340537,
+        350992, 368453, 368741, 433602, 444268, 451892, 451895, 459852, 470174, 497450, 497453, 497476, 497483, 497512, 501638,
+        501746, 502563, 502574, 502826, 560324, 560759, 561845, 569621, 587153, 587743, 587765, 590999, 591428, 591863, 591899,
+        591935, 592724, 593159, 594020, 594455, 599587, 599609, 600905, 608276, 608558, 612312, 612527, 616334, 619728, 619836,
+        620064, 620088, 620089, 620090, 620303, 630308, 630579, 630590, 631886, 651315, 651326, 739172, 740468, 747380, 777620,
+        778484, 778520, 778556, 779780, 781076, 793968, 797555, 797817, 811353, 811415, 811569, 811806, 811808, 811811, 812053,
+        812059, 812073, 825048, 825072, 825073, 825074, 826368, 827664, 889055, 909899, 910835, 911054, 911080, 911087, 935150,
+        942926, 957171, 957182, 958478, 972835, 972857, 974153, 977907, 977918, 1028180, 1050212, 1065867, 1065883, 1066443, 1067163,
+        1079550, 1086138, 1087074, 1087309, 1087326, 1133442, 1144108, 1151735, 1159692, 1167287, 1168732, 1172322, 1180081, 1180098, 1189828,
+        1189936, 1190738, 1190741, 1190764, 1190771, 1191016, 1197527, 1198391, 1198427, 1198463, 1199687, 1200983, 1205556, 1206324, 1206348,
+        1206349, 1206350, 1207644, 1308773, 1316549, 1318692, 1328465, 1328471, 1329050, 1329055, 1329076, 1329077, 1329083, 1334671, 1334693,
+        1334729, 1335004, 1335390, 1335393, 1335400, 1338132, 1338816, 1339428, 1355392, 1359193, 1366069, 1366969, 1376632, 1377398, 1377401,
+        1377424, 1377431, 1394561, 1394669, 1394863, 1394885, 1395151, 1395173, 1485668, 1499024, 1506800, 1610927, 1655669, 1655675, 1661285,
+        1661992, 1666020}));
 
-    private final AtomicInteger uid = new AtomicInteger(0);
+    public static String getUniqueMark(String text) {
+        while (true) {
+            int mark = random.nextInt(hiMark - loMark + 1) + loMark;
+            if (nbad.contains(mark)) {
+                continue;
+            }
+            String ret = Integer.toString(mark, 36) + ':';
+            if (!text.contains(ret)) {
+                return ':' + ret + ';';
+            }
+        }
+    }
+
+    public static int getUniqueId(String text) {
+        while (true) {
+            int mark = random.nextInt(hiMark - loMark + 1) + loMark;
+            if (nbad.contains(mark)) {
+                continue;
+            }
+            String ret = Integer.toString(mark, 36) + ':';
+            if (!text.contains(ret)) {
+                return mark;
+            }
+        }
+    }
+
+    private void diff(UText ut) {
+        ClNode get = nodeMap.get(ut.uid);
+        String o=get.toString().substring(6).trim();
+        String n=ut.text.toString().trim();
+        if (!o.equals(n)){
+            System.out.println("o: "+o);
+            System.out.println("n: "+n);
+        }
+    }
+
+    public static class UText implements Comparable<UText> {
+
+        public final int uid;
+        public final StringBuilder text;
+
+        public UText(int uid, String text) {
+            this.uid = uid;
+            this.text = new StringBuilder(text);
+        }
+
+        public UText(int uid, StringBuilder text) {
+            this(uid, text.toString());
+        }
+
+        @Override
+        public int compareTo(UText t) {
+            return Integer.compare(uid, t.uid);
+        }
+
+        @Override
+        public String toString() {
+            return "UText{" + "uid=" + Integer.toString(uid, 36) + ", text=" + text + '}';
+        }
+    }
+
+    public static String markText(StringBuilder text, int pos) {
+        String ret = getUniqueMark(text.toString());
+        text.insert(pos, ret);
+        return ret;
+    }
+
+    public static List<String[]> splitString(String input) {
+        Pattern pattern = Pattern.compile(":([^:;]*);");
+        Matcher matcher = pattern.matcher(input);
+
+        List<String[]> results = new ArrayList<>();
+
+        int lastEnd = 0;
+        while (matcher.find()) {
+            String candidate = matcher.group(1).replaceAll("[^a-zA-Z0-9]", "");
+            if (candidate.length() == 4 && !nbad.contains(Integer.parseInt(candidate, 36))) {
+                String[] segments = new String[3];
+                segments[0] = input.substring(lastEnd, matcher.start()); // Optional Text 1
+                segments[1] = candidate; // Mark
+                lastEnd = matcher.end();
+                if (matcher.find()) {
+                    segments[2] = input.substring(lastEnd, matcher.start()); // Optional Text 2
+                    lastEnd = matcher.start();
+                    matcher.region(lastEnd, input.length());
+                } else {
+                    segments[2] = input.substring(lastEnd); // Remaining Optional Text
+                }
+                results.add(segments);
+            }
+        }
+
+        return results;
+    }
+
+    public static List<UText> getTexts(String text) {
+        List<UText> ret = new ArrayList<>();
+        List<String[]> splitString = splitString(text);
+        for (String[] m : splitString) {
+            if (m.length == 3 && !m[2].isEmpty()) {
+                try {
+                    int id = Integer.parseInt(m[1], 36);
+                    UText elm = new UText(id, m[2]);
+                    ret.add(elm);
+                } catch (NumberFormatException e) {
+                    // Not a valid mark? Should not happen.
+                    throw new RuntimeException(text + "\nClaims " + m[1] + " as a mark?");
+                }
+            }
+        }
+        return ret;
+    }
     public final AtomicReference<Color> defaultNodeForegroundColor = new AtomicReference<>(Color.BLACK);
     public final AtomicReference<Color> defaultNodeBackgroundColor = new AtomicReference<>(Color.WHITE);
     public final AtomicReference<Color> defaultEdgeForegroundColor = new AtomicReference<>(Color.BLACK);
@@ -60,12 +196,25 @@ public class ClGraph {
         nodeMap.clear();
         nodeCenters = null;
         segments = null;
-        uid.set(0);
+    }
+
+    public StringBuilder flat() {
+        StringBuilder sb = new StringBuilder();
+        for (ClNode node : nodeMap.values()) {
+            sb.append(EOLN);
+            sb.append(node.toString());
+        }
+        sb.append(EOLN);
+        return sb;
     }
 
     public void addEdge(ClNode n1, ClNode n2, String label) {
         ClEdge e = new ClEdge(n1, n2, label);
         nodeMap.put(e.getId(), e);
+    }
+
+    public boolean isEmpty() {
+        return nodeMap.isEmpty();
     }
 
     protected ClNode addNode(ClNode node) {
@@ -74,7 +223,7 @@ public class ClGraph {
     }
 
     public int genId() {
-        return uid.incrementAndGet();
+        return getUniqueId(flat().toString());
     }
 
     public ClNode getNode(int id) {
@@ -123,7 +272,7 @@ public class ClGraph {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         List<NodeJSON> l = new LinkedList<>();
         for (ClNode n : getNodes()) {
-            NodeJSON nj = new NodeJSON(n.id, n.foreColor.getRGB(), n.backColor.getRGB());
+            NodeJSON nj = new NodeJSON(n.uid, n.foreColor.getRGB(), n.backColor.getRGB());
             nj.label = n.label;
             if (isNode(n)) {
                 nj.userObj = n.getUserStr();
@@ -132,7 +281,7 @@ public class ClGraph {
             }
         }
         for (ClEdge e : getEdges()) {
-            NodeJSON nj = new NodeJSON(e.id, e.foreColor.getRGB(), e.backColor.getRGB());
+            NodeJSON nj = new NodeJSON(e.uid, e.foreColor.getRGB(), e.backColor.getRGB());
             nj.label = e.label;
             nj.from = e.fromNode.getId();
             nj.to = e.toNode.getId();
@@ -173,7 +322,7 @@ public class ClGraph {
         }
         boolean err = true;
         while (!edges.isEmpty()) {
-            nodes=new LinkedList<>(subs.keySet());
+            nodes = new LinkedList<>(subs.keySet());
             for (ClNode node : nodes) {
                 DefaultMutableTreeNode child = subs.get(node);
                 for (Iterator<ClEdge> it = edges.iterator(); it.hasNext();) {
@@ -190,10 +339,10 @@ public class ClGraph {
                 }
             }
             if (err) {
-                System.err.println("Error: "+edges);
+                System.err.println("Error: " + edges);
                 break;
             }
-            err=true;
+            err = true;
         }
         return new JTree(root);
     }
@@ -207,7 +356,7 @@ public class ClGraph {
                 }
             }
         }
-        nodeMap.remove(node.id);
+        nodeMap.remove(node.uid);
     }
 
     private static boolean isNode(ClNode node) {
@@ -217,7 +366,7 @@ public class ClGraph {
     public void save(File f, Gson gson) {
         List<NodeJSON> l = new LinkedList<>();
         for (ClNode n : getNodes()) {
-            NodeJSON nj = new NodeJSON(n.id, n.foreColor.getRGB(), n.backColor.getRGB());
+            NodeJSON nj = new NodeJSON(n.uid, n.foreColor.getRGB(), n.backColor.getRGB());
             nj.label = n.label;
             if (isNode(n)) {
                 nj.userObj = n.getUserStr();
@@ -226,7 +375,7 @@ public class ClGraph {
             }
         }
         for (ClEdge e : getEdges()) {
-            NodeJSON nj = new NodeJSON(e.id, e.foreColor.getRGB(), e.backColor.getRGB());
+            NodeJSON nj = new NodeJSON(e.uid, e.foreColor.getRGB(), e.backColor.getRGB());
             nj.label = e.label;
             nj.from = e.fromNode.getId();
             nj.to = e.toNode.getId();
@@ -244,24 +393,33 @@ public class ClGraph {
     }
 
     protected synchronized void load(File f, Gson gson) {
-        int lid = 0;
         clear();
         try ( FileReader fr = new FileReader(f)) {
             NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
             for (NodeJSON nj : l) {
+                // clean up
+                nj.label = nj.label.replace("\"", "");
+                nj.label = nj.label.replace("'", "");
                 if (nj.label.length() > 20) {
                     nj.label = nj.label.substring(0, 20).trim();
                 }
-                lid = Math.max(lid, nj.id);
+                if (nj.id < loMark) {
+                    nj.id += loMark;
+                }
                 if (null == nj.from) {
                     ClNode n = new ClNode(this, nj);
-                    nodeMap.put(n.id, n);
+                    nodeMap.put(n.uid, n);
                 } else {
+                    if (nj.from < loMark) {
+                        nj.from += loMark;
+                    }
+                    if (nj.to < loMark) {
+                        nj.to += loMark;
+                    }
                     ClEdge e = new ClEdge(this, nj);
-                    nodeMap.put(e.id, e);
+                    nodeMap.put(e.uid, e);
                 }
             }
-            uid.set(lid);
         } catch (IOException ex) {
             throw new RuntimeException("Error reading from " + f, ex);
         }
@@ -273,7 +431,6 @@ public class ClGraph {
             return;
         }
         ByteArrayInputStream bais = new ByteArrayInputStream(stack.pop());
-        int lid = 0;
         clear();
         try ( InputStreamReader fr = new InputStreamReader(bais)) {
             NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
@@ -281,16 +438,14 @@ public class ClGraph {
                 if (nj.label.length() > 20) {
                     nj.label = nj.label.substring(0, 20).trim();
                 }
-                lid = Math.max(lid, nj.id);
                 if (null == nj.from) {
                     ClNode n = new ClNode(this, nj);
-                    nodeMap.put(n.id, n);
+                    nodeMap.put(n.uid, n);
                 } else {
                     ClEdge e = new ClEdge(this, nj);
-                    nodeMap.put(e.id, e);
+                    nodeMap.put(e.uid, e);
                 }
             }
-            uid.set(lid);
         } catch (IOException ex) {
             throw new RuntimeException("Error in pop", ex);
         }

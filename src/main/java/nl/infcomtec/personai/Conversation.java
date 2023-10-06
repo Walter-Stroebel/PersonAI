@@ -18,7 +18,6 @@ import nl.infcomtec.tools.PandocConverter;
  */
 public class Conversation extends ClGraph {
 
-    private static final String EOLN = System.lineSeparator();
     public final TreeSet<String> selectedNodes = new TreeSet<>();
     public ClNode insNode;
 

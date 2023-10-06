@@ -51,12 +51,12 @@ In essence, when crafting your prompt:
 Tools and Buttons
 =================
 
-On the right, you will find these buttons:
+On the right, you will find lots of elements, these are the most important ones:
 ------------------------------------------
 
--  **Display Label**: What this node is or will be called.
+-   **Display Label**: What this node is or will be called.
 
--  **Edit the Text**: Edit the text in the main box. Try it with this
+-   **Edit the Text**: Edit the text in the main box. Try it with this
     introduction. Don't worry; this will be restored when you restart
     the tool.
 
@@ -64,34 +64,33 @@ On the right, you will find these buttons:
     Markdown, showing it as HTML, and then copying it using the
     clipboard to, e.g., Notepad or Pluma. Try it.*
 
--  **Font Size**: Changes the size of the text in the main box.
+-   **Font Size**: This slider changes the size of the text in the main box.
 
--  **Shape**: Change the shape of this node.
+-   **Shape**: Change the shape of this node.
 
--  **Apply**: The changes will be applied to the selected node, or a
+-   **Apply**: The changes will be applied to the selected node, or a
     new one will be created.
 
-   *If you edited the text, it will **NOT** be saved unless you also **Apply**.* 
+    *If you edited the text, it will **NOT** be saved unless you also
+    **Apply**.*
 
--  **Clear**: Clears the text in the main box (this text). If you do so
+-   **Clear**: Clears the text in the main box (this text). If you do so
     by error, simply do not also press **Apply**.
 
 On the top, you will find these buttons:
 ----------------------------------------
 
--  **Welcome!**: In green, replaces the contents with this text. No
+-   **Welcome!**: In green, replaces the contents with this text. No
     worries if that was not what you intended to do, use Load and fetch
     the file "LastClear".
--  **Exit**: Close down the tool. No questions asked, but a file
+-   **Exit**: Close down the tool. No questions asked, but a file
     "LastExit" will be created.
--  **Bigger Text**: Make all text bigger.
--  **Smaller Text**: Make all text smaller.
--  **Save**: Save everything to a file.
--  **Load**: Load everything from a file.
--  **Clear All**: Deletes everything. No questions asked, but a file
+-   **Bigger Text**: Make all text bigger.
+-   **Smaller Text**: Make all text smaller.
+-   **Save**: Save everything to a file.
+-   **Load**: Load everything from a file.
+-   **Clear All**: Deletes everything. No questions asked, but a file
     "LastClear" will be created.
--  **Start Vagrant**: Starts the Vagrant tool. This is an advanced
-    option.
--  **Check Vagrant Logs**: This is an advanced option.
--  **Stop Vagrant**: Stops the Vagrant tool. This is an advanced
-    option.
+-   **Undo**: Should undo what you did last.
+-   **Advanced**: Read all the documentation on GitHub
+    (https://github.com/Walter-Stroebel/PersonAI) first.

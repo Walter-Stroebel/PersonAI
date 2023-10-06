@@ -13,14 +13,14 @@ public class ClEdge extends ClNode {
     public final ClNode toNode;
 
     public ClEdge(ClNode from, ClNode to, String label, Color fgColor, Color bgColor) {
-        super((ClGraph)from.graph, label, fgColor, bgColor);
+        super((ClGraph) from.graph, label, fgColor, bgColor);
         this.fromNode = from;
         this.toNode = to;
         shape = "edge";
     }
 
     public ClEdge(ClNode from, ClNode to, String label) {
-        super((ClGraph)from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
+        super((ClGraph) from.graph, label, from.graph.defaultEdgeForegroundColor.get(), from.graph.defaultEdgeBackgroundColor.get());
         this.fromNode = from;
         this.toNode = to;
         shape = "edge";
@@ -35,34 +35,31 @@ public class ClEdge extends ClNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Edge\n");
-        sb.append("\n\tlabel=").append(label);
-        sb.append("\n\tfromNode=").append(fromNode);
-        sb.append("\n\ttoNode=").append(toNode);
+        sb.append(getMark());
+        sb.append(label).append('#');
+        sb.append(fromNode.getUid()).append(" -> ").append(toNode.getUid()).append(ClGraph.EOLN);
         return sb.toString();
     }
 
     @Override
     public DefaultMutableTreeNode toTreeNode() {
-        DefaultMutableTreeNode ret=new DefaultMutableTreeNode("EDGE");
+        DefaultMutableTreeNode ret = new DefaultMutableTreeNode("EDGE");
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("label="+label);
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("label=" + label);
+            ret.add(val);
         }
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("id="+id);
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("name=" + getName());
+            ret.add(val);
         }
         return ret;
     }
 
     @Override
     public String generateDotRepresentation() {
-        String n1 = "N" + fromNode.getId();
-        String n2 = "N" + toNode.getId();
         StringBuilder sb = new StringBuilder();
 
-        sb.append(n1).append(" -> ").append(n2)
+        sb.append(fromNode.getName()).append(" -> ").append(toNode.getName())
                 .append(" [label=\"").append(label).append("\", ")
                 .append("color=").append(ClGraph.dotColor(foreColor))
                 .append(", fillcolor=").append(ClGraph.dotColor(backColor))

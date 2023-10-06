@@ -12,7 +12,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.GridLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -26,8 +28,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,6 +55,7 @@ import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import nl.infcomtec.graphs.ClEdge;
 import nl.infcomtec.graphs.ClNode;
 import nl.infcomtec.simpleimage.ImageObject;
@@ -65,12 +68,13 @@ import nl.infcomtec.simpleimage.ImageViewer;
  */
 public class PersonAI {
 
-    public static Font font; /// < This is the base of all scaling code.
+    public static AtomicBoolean advanced = new AtomicBoolean(false); /// < Keep the mortals sane.
+    public static Font font; /// < This is the base of all scaling code. See Config.
     public static final String osName = System.getProperty("os.name").toLowerCase(); /// < Use this if you encounter OS specific issues.
     public static final File HOME_DIR = new File(System.getProperty("user.home"));
     public static final File WORK_DIR = new File(PersonAI.HOME_DIR, ".personAI");
-    public static final File LAST_EXIT = new File(PersonAI.WORK_DIR, "LastExit");
-    public static final File LAST_CLEAR = new File(PersonAI.WORK_DIR, "LastClear");
+    public static final File LAST_EXIT = new File(PersonAI.WORK_DIR, "LastExit.pai");
+    public static final File LAST_CLEAR = new File(PersonAI.WORK_DIR, "LastClear.pai");
     public static final File CONFIG_FILE = new File(PersonAI.WORK_DIR, "config.json");
     public static final Gson gson = new GsonBuilder().setPrettyPrinting().create(); /// < A central way to configure GSon.
     public static final File VAGRANT_DIR = new File(PersonAI.HOME_DIR, "vagrant/MiniGW"); /// < This might vary on another OS.
@@ -87,19 +91,6 @@ public class PersonAI {
     private Component graph;
     private Component last;
     public static Config config;
-    public static final Random random = new Random();
-    public static final int loMark = Integer.parseInt("1000", 36);
-    public static final int hiMark = Integer.parseInt("zzzz", 36);
-
-    public static String getUniqueMark(String text) {
-        while (true) {
-            int mark = random.nextInt(hiMark - loMark + 1) + loMark;
-            String ret = Integer.toString(mark, 36);
-            if (!text.contains(ret)) {
-                return ret;
-            }
-        }
-    }
 
     /**
      * Starting point.
@@ -179,7 +170,7 @@ public class PersonAI {
     private void setUI() {
         Set<Map.Entry<Object, Object>> entries = new HashSet(UIManager.getLookAndFeelDefaults().entrySet());
         for (Map.Entry<Object, Object> entry : entries) {
-            if (entry.getValue() instanceof Font) {
+            if (entry.getKey().toString().endsWith(".font")) {
                 UIManager.put(entry.getKey(), font);
             } else if (entry.getValue() instanceof Color) {
                 UIManager.put(entry.getKey(), config.mapTo((Color) entry.getValue()));
@@ -220,8 +211,12 @@ public class PersonAI {
         dot.addListener(new GraphMouse("Mouse"));
         grPane.add(viewPanel, BorderLayout.CENTER);
         JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
-        ClNode start = convo.newNode("Start", "box", "");
-        addReplaceTab(start).setEditMode(true);
+        if (convo.isEmpty()) {
+            ClNode start = convo.newNode("Start", "box", "");
+            addReplaceTab(start).setEditMode(true);
+        } else {
+            addReplaceTab(convo.getFirstNode());
+        }
         tabbedPane.addTab(GRAPH_TITLE, grPane);
         addButtons();
     }
@@ -269,18 +264,20 @@ public class PersonAI {
     }
 
     private void addButtons() {
-        JButton green = new JButton(new AbstractAction("Welcome!") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                convo.save(LAST_CLEAR, gson);
-                convo.clear();
-                ClNode start = convo.newNode("Start", "box", getResource("start.md"));
-                addReplaceTab(start);
-                rebuildLast();
-            }
-        });
-        green.setForeground(Color.GREEN.darker());
-        putOnBar(green);
+        if (!advanced.get()) {
+            JButton green = new JButton(new AbstractAction("Welcome!") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    convo.save(LAST_CLEAR, gson);
+                    convo.clear();
+                    ClNode start = convo.newNode("Start", "box", getResource("start.md"));
+                    addReplaceTab(start);
+                    rebuildLast();
+                }
+            });
+            green.setForeground(Color.GREEN.darker());
+            putOnBar(green);
+        }
         putOnBar(new JButton(new AbstractAction("Exit") {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -291,7 +288,9 @@ public class PersonAI {
         putOnBar(new JButton(new AbstractAction("Bigger text") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                font = new Font(font.getName(), font.getStyle(), font.getSize() + 1);
+                config.fontSize++;
+                saveConfig();
+                font = config.getFont();
                 initGUI();
                 rebuild();
                 setVisible();
@@ -301,7 +300,9 @@ public class PersonAI {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 if (font.getSize() > 6) {
-                    font = new Font(font.getName(), font.getStyle(), font.getSize() - 1);
+                    config.fontSize--;
+                    saveConfig();
+                    font = config.getFont();
                     initGUI();
                     rebuild();
                     setVisible();
@@ -312,9 +313,14 @@ public class PersonAI {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 JFileChooser jfc = new JFileChooser(WORK_DIR);
+                jfc.setFileFilter(getExtFilter());
                 int ret = jfc.showSaveDialog(frame);
                 if (ret == JFileChooser.APPROVE_OPTION) {
-                    convo.save(jfc.getSelectedFile(), gson);
+                    File f = jfc.getSelectedFile();
+                    if (!f.getName().endsWith(".pai")) {
+                        f = new File(f.getAbsolutePath() + ".pai");
+                    }
+                    convo.save(f, gson);
                 }
             }
         }));
@@ -322,6 +328,7 @@ public class PersonAI {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 JFileChooser jfc = new JFileChooser(WORK_DIR);
+                jfc.setFileFilter(getExtFilter());
                 int ret = jfc.showOpenDialog(frame);
                 if (ret == JFileChooser.APPROVE_OPTION) {
                     convo.loadConvo(jfc.getSelectedFile(), gson);
@@ -345,38 +352,60 @@ public class PersonAI {
                 rebuild();
             }
         }));
-        putOnBar(new JButton(new AbstractAction("Start Vagrant") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                if (null != vagrant) {
-                    vagrant.stop();
+        if (advanced.get()) {
+            putOnBar(new JButton(new AbstractAction("Parse") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    if (null != vagrant) {
+                        vagrant.stop();
+                    }
+                    vagrant = new Vagrant();
+                    vagrant.start();
                 }
-                vagrant = new Vagrant();
-                vagrant.start();
-            }
-        }));
-        putOnBar(new JButton(new AbstractAction("Check Vagrant logs") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                if (null != vagrant) {
-                    synchronized (vagrant.log) {
-                        String log = vagrant.log.toString();
-                        setTabText("Vagrant log", log);
+            }));
+            putOnBar(new JButton(new AbstractAction("Start Vagrant") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    if (null != vagrant) {
+                        vagrant.stop();
+                    }
+                    vagrant = new Vagrant();
+                    vagrant.start();
+                }
+            }));
+            putOnBar(new JButton(new AbstractAction("Check Vagrant logs") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    if (null != vagrant) {
+                        synchronized (vagrant.log) {
+                            String log = vagrant.log.toString();
+                            setTabText("Vagrant log", log);
+                        }
                     }
                 }
-            }
-        }));
-        putOnBar(new JButton(new AbstractAction("Stop Vagrant") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                if (null != vagrant) {
-                    vagrant.stop();
-                } else {
-                    vagrant = new Vagrant();
-                    vagrant.stop();
+            }));
+            putOnBar(new JButton(new AbstractAction("Stop Vagrant") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    if (null != vagrant) {
+                        vagrant.stop();
+                    } else {
+                        vagrant = new Vagrant();
+                        vagrant.stop();
+                    }
                 }
-            }
-        }));
+            }));
+        } else {
+            putOnBar(new JButton(new AbstractAction("Advanced") {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    advanced.set(true);
+                    toolBar.removeAll();
+                    addButtons();
+                    rebuild();
+                }
+            }));
+        }
         working.setName("prog");
         putOnBar(working);
     }
@@ -392,6 +421,10 @@ public class PersonAI {
         } catch (Exception ex) {
             return "Reading from resource failed: " + ex.getMessage();
         }
+    }
+
+    public static FileNameExtensionFilter getExtFilter() {
+        return new FileNameExtensionFilter("PersonAI FILES", "pai");
     }
 
     /**
@@ -427,10 +460,12 @@ public class PersonAI {
         worker.execute();
 
     }
-   /** Method to expand all nodes in a JTree
-    * 
-    * @param tree 
-    */
+
+    /**
+     * Method to expand all nodes in a JTree
+     *
+     * @param tree
+     */
     public static void expandAllNodes(JTree tree) {
         int row = 0;
         while (row < tree.getRowCount()) {
@@ -438,6 +473,7 @@ public class PersonAI {
             row++;
         }
     }
+
     private void doRebuild() {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
@@ -460,18 +496,21 @@ public class PersonAI {
             if (null != last) {
                 tabbedPane.add(LAST_TITLE, last);
             }
-            JTree tree = convo.toTree();
-            tree.setFont(font);
-            expandAllNodes(tree);
-            tabbedPane.add("Tree", new JScrollPane(tree));
-            for (ClNode n : convo.getNodes()) {
-                addReplaceTab(n);
+            if (advanced.get()) {
+                JTree tree = convo.toTree();
+                expandAllNodes(tree);
+                tabbedPane.add("Tree", new JScrollPane(tree));
+                StringBuilder flat = convo.flat();
+                tabbedPane.add("Flat", new JScrollPane(new JTextArea(flat.toString())));
+                for (ClNode n : convo.getNodes()) {
+                    addReplaceTab(n);
+                }
             }
             frame.repaint();
         } catch (Exception ex) {
-            Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, "doRebuild()", ex);
         }
-        working.setIndeterminate(false);//.running.set(false);
+        working.setIndeterminate(false);
         working.setStringPainted(true);
         working.setString(String.format("%.3f s", (System.nanoTime() - workingStart) / 1E9));
     }
@@ -486,6 +525,17 @@ public class PersonAI {
         for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
             if (tabbedPane.getTitleAt(i).equals(t)) {
                 tabbedPane.remove(i);
+                return;
+            }
+        }
+    }
+
+    public void jumpTo(ClNode node) {
+        String title = node.getName() + "." + node.label;
+
+        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
+            if (tabbedPane.getTitleAt(i).equals(title)) {
+                tabbedPane.setSelectedIndex(i);
                 return;
             }
         }
@@ -602,18 +652,34 @@ public class PersonAI {
     }
 
     public Component graphPanel(ClNode ref) {
-        JPanel links = new JPanel(new GridLayout(0, 4));
-        links.setPreferredSize(new Dimension(config.w20PerDeco, config.h20Per));
-        links.add(new JLabel("Link"));
-        links.add(new JLabel("Node1"));
-        links.add(new JLabel("Node2"));
-        links.add(new JLabel("Operations"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(2, 2, 2, 2);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        JPanel links = new JPanel(new GridBagLayout());
+        //links.setPreferredSize(new Dimension(config.w20PerDeco, config.h20Per));
+        links.add(new JLabel("Link"), gbc);
+        gbc.gridx++;
+        links.add(new JLabel("Node1"), gbc);
+        gbc.gridx++;
+        links.add(new JLabel("Node2"), gbc);
+        gbc.gridx++;
+        links.add(new JLabel("Operations"), gbc);
+        gbc.gridx++;
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         for (ClEdge e : convo.getEdges()) {
             if (e.fromNode.equals(ref) || e.toNode.equals(ref)) {
-                links.add(new JTextField(e.label));
-                links.add(new JLabel(e.fromNode.getName()));
-                links.add(new JLabel(e.toNode.getName()));
-                links.add(ops(e));
+                links.add(new JTextField(e.label), gbc);
+                gbc.gridx++;
+                links.add(new JLabel(e.fromNode.getName()), gbc);
+                gbc.gridx++;
+                links.add(new JLabel(e.toNode.getName()), gbc);
+                gbc.gridx++;
+                links.add(ops(e), gbc);
+                gbc.gridx = 0;
+                gbc.gridy++;
             }
         }
         JScrollPane ret = new JScrollPane(links);
@@ -634,7 +700,8 @@ public class PersonAI {
         public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
             ClNode node = convo.getNode(e);
             if (SwingUtilities.isLeftMouseButton(e)) {
-                convo.selectNode(node, dotViewer);
+                // TODO convo.selectNode(node, dotViewer);
+                jumpTo(node);
             } else {
                 convo.unselectNode(node, dotViewer);
             }
@@ -756,9 +823,6 @@ public class PersonAI {
                         progressMsg.setText(failure.getMessage());
                     }
                 });
-//                Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, failure);
-            } else {
-                // Handle successful completion and update the UI accordingly
             }
         }
     }

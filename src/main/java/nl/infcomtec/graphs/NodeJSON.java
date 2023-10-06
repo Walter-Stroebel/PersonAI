@@ -17,8 +17,8 @@ public class NodeJSON {
     String shape;
     int id;
 
-    public NodeJSON(int id, int fCol, int bCol) {
-        this.id = id;
+    public NodeJSON(int uid, int fCol, int bCol) {
+        this.id = uid;
         this.fCol = fCol;
         this.bCol = bCol;
     }

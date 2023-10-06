@@ -11,7 +11,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 public class ClNode {
 
     public String label;
-    public final int id;
+    public final int uid;
     protected final ClGraph graph;
     protected final Color foreColor;
     protected final Color backColor;
@@ -31,7 +31,7 @@ public class ClNode {
         this.foreColor = fgColor;
         this.backColor = bgColor;
         this.graph = graph;
-        id = graph.genId();
+        uid = graph.genId();
         graph.addNode(this);
     }
 
@@ -51,7 +51,7 @@ public class ClNode {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 43 * hash + this.id;
+        hash = 43 * hash + this.uid;
         return hash;
     }
 
@@ -67,7 +67,7 @@ public class ClNode {
             return false;
         }
         final ClNode other = (ClNode) obj;
-        return this.id == other.id;
+        return this.uid == other.uid;
     }
 
     /**
@@ -81,11 +81,19 @@ public class ClNode {
     }
 
     public int getId() {
-        return id;
+        return uid;
+    }
+
+    public String getMark() {
+        return ':' + getUid() + ';';
+    }
+
+    public String getUid() {
+        return Integer.toString(uid, 36);
     }
 
     public String getName() {
-        return "N" + id;
+        return "N" + Integer.toString(uid, 36);
     }
 
     /**
@@ -97,7 +105,7 @@ public class ClNode {
         StringBuilder sb = new StringBuilder();
         int nodeId = getId();
 
-        sb.append("N").append(nodeId)
+        sb.append(getName())
                 .append(" [style=filled, label=\"").append(label).append("\", ")
                 .append("color=").append(ClGraph.dotColor(foreColor))
                 .append(", fillcolor=").append(ClGraph.dotColor(backColor))
@@ -146,7 +154,7 @@ public class ClNode {
     public ClNode(ClGraph g, NodeJSON nj) {
         this.backColor = new Color(nj.bCol);
         this.foreColor = new Color(nj.fCol);
-        this.id = nj.id;
+        this.uid = nj.id;
         this.graph = g;
         this.label = nj.label;
         this.shape = nj.shape;
@@ -156,32 +164,30 @@ public class ClNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("ClNode");
-        sb.append("\n\tlabel=").append(label);
-        sb.append("\n\tid=").append(id);
-        sb.append("\n\tshape=").append(shape);
-        sb.append("\n\tuserObj=").append(userObj);
-        sb.setLength(Math.min(sb.length(), 100));
+        sb.append(getMark());
+        sb.append(label).append('#');
+        sb.append(shape).append('#').append(ClGraph.EOLN);
+        sb.append(userObj);
         return sb.toString();
     }
 
     public DefaultMutableTreeNode toTreeNode() {
-        DefaultMutableTreeNode ret=new DefaultMutableTreeNode("NODE");
+        DefaultMutableTreeNode ret = new DefaultMutableTreeNode("NODE");
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("label="+label);
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("label=" + label);
+            ret.add(val);
         }
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("id="+id);
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("name=" + getName());
+            ret.add(val);
         }
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("shape="+shape);
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("shape=" + shape);
+            ret.add(val);
         }
         {
-        DefaultMutableTreeNode val=new DefaultMutableTreeNode("text="+userObj.toString());
-        ret.add(val);
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("text=" + userObj.toString());
+            ret.add(val);
         }
         return ret;
     }
