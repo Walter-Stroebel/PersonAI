@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
+import javax.swing.JOptionPane;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import nl.infcomtec.simpleimage.BitShape;
@@ -94,13 +95,27 @@ public class ClGraph {
         }
     }
 
-    private void diff(UText ut) {
+    private void update(UText ut) {
         ClNode get = nodeMap.get(ut.uid);
-        String o=get.toString().substring(6).trim();
-        String n=ut.text.toString().trim();
-        if (!o.equals(n)){
-            System.out.println("o: "+o);
-            System.out.println("n: "+n);
+        if (null==get){
+            JOptionPane.showMessageDialog(null, "You messed up a marker "+ut.uid);
+            return;
+        }
+        if(get instanceof ClEdge) {
+            // TODO Edge editing not supported
+            return;
+        }
+        int eoLab=ut.text.indexOf("#");
+        int eoShp=ut.text.indexOf("#",eoLab+1);
+        get.setUserObj(ut.text.substring(eoShp+1).trim());
+        get.shape=ut.text.substring(eoLab+1, eoShp);
+        get.label=ut.text.substring(0, eoLab);
+    }
+
+    public void parse(String text) {
+        List<UText> texts = getTexts(text);
+        for (UText ut:texts){
+            update(ut);
         }
     }
 
@@ -550,7 +565,7 @@ public class ClGraph {
             }
         }
         if (nId.startsWith("N")) {
-            int id = Integer.parseInt(nId.substring(1));
+            int id = Integer.parseInt(nId.substring(1),36);
             return nodeMap.get(id);
         }
         return null;

@@ -134,4 +134,5 @@ public class Conversation extends ClGraph {
     public void loadConvo(File selectedFile, Gson gson) {
         load(selectedFile, gson);
     }
+
 }

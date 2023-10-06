@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -150,7 +151,7 @@ public class PersonAI {
     public ImageObject dot;
     public JFrame frame;
     public JToolBar toolBar;
-    public JTabbedPane tabbedPane;
+    public final AtomicReference<JTabbedPane> tabbedPane = new AtomicReference<>();
     private Instructions ins;
     private Instruction curIns;
     public Conversation convo = new Conversation();
@@ -161,6 +162,7 @@ public class PersonAI {
     private ButtonGroup insGrp;
     private final JProgressBar working = new JProgressBar();
     private long workingStart;
+    private JTextArea taFlat;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -189,36 +191,38 @@ public class PersonAI {
     }
 
     private void initGUI() {
-        try {
-            dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
-        } catch (IOException ex) {
-            Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
+        synchronized (tabbedPane) {
+            try {
+                dot = new ImageObject(ImageIO.read(getClass().getResourceAsStream("/robotHelper.png")));
+            } catch (IOException ex) {
+                Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            setUI();
+            frame = new JFrame("PersonAI");
+            toolBar = new JToolBar();
+            tabbedPane.set(new JTabbedPane());
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setLayout(new BorderLayout());
+            frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+            // Add JToolBar to the north
+            frame.getContentPane().add(toolBar, BorderLayout.NORTH);
+            // Add JTabbedPane to the center
+            frame.getContentPane().add(tabbedPane.get(), BorderLayout.CENTER);
+            JPanel grPane = new JPanel(new BorderLayout());
+            dotViewer = new ImageViewer(dot);
+            JPanel viewPanel = dotViewer.getScalePanPanel();
+            dot.addListener(new GraphMouse("Mouse"));
+            grPane.add(viewPanel, BorderLayout.CENTER);
+            JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
+            if (convo.isEmpty()) {
+                ClNode start = convo.newNode("Start", "box", "");
+                addReplaceTab(start).setEditMode(true);
+            } else {
+                addReplaceTab(convo.getFirstNode());
+            }
+            tabbedPane.get().addTab(GRAPH_TITLE, grPane);
+            addButtons();
         }
-        setUI();
-        frame = new JFrame("PersonAI");
-        toolBar = new JToolBar();
-        tabbedPane = new JTabbedPane();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new BorderLayout());
-        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        // Add JToolBar to the north
-        frame.getContentPane().add(toolBar, BorderLayout.NORTH);
-        // Add JTabbedPane to the center
-        frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
-        JPanel grPane = new JPanel(new BorderLayout());
-        dotViewer = new ImageViewer(dot);
-        JPanel viewPanel = dotViewer.getScalePanPanel();
-        dot.addListener(new GraphMouse("Mouse"));
-        grPane.add(viewPanel, BorderLayout.CENTER);
-        JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
-        if (convo.isEmpty()) {
-            ClNode start = convo.newNode("Start", "box", "");
-            addReplaceTab(start).setEditMode(true);
-        } else {
-            addReplaceTab(convo.getFirstNode());
-        }
-        tabbedPane.addTab(GRAPH_TITLE, grPane);
-        addButtons();
     }
 
     public Component createInsPanel() {
@@ -356,11 +360,8 @@ public class PersonAI {
             putOnBar(new JButton(new AbstractAction("Parse") {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
-                    if (null != vagrant) {
-                        vagrant.stop();
-                    }
-                    vagrant = new Vagrant();
-                    vagrant.start();
+                    convo.parse(taFlat.getText());
+                    rebuild();
                 }
             }));
             putOnBar(new JButton(new AbstractAction("Start Vagrant") {
@@ -453,7 +454,9 @@ public class PersonAI {
             @Override
             protected Object doInBackground() throws Exception {
                 doRebuild();
-                tabbedPane.setSelectedIndex(tabbedPane.getComponentCount() - 1);
+                synchronized (tabbedPane) {
+                    tabbedPane.get().setSelectedIndex(tabbedPane.get().getComponentCount() - 1);
+                }
                 return null;
             }
         };
@@ -475,36 +478,39 @@ public class PersonAI {
     }
 
     private void doRebuild() {
+        synchronized (tabbedPane) {
         try {
             ins = Instructions.load(new File(PersonAI.WORK_DIR, INS_FILENAME), gson);
             BufferedImage render = convo.render();
             dot.putImage(render);
             convo.segments = dot.calculateClosestAreas(convo.nodeCenters);
-            for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
-                String tit = tabbedPane.getTitleAt(i);
+            for (int i = 0; i < tabbedPane.get().getComponentCount(); i++) {
+                String tit = tabbedPane.get().getTitleAt(i);
                 if (tit.equals(LAST_TITLE)) {
-                    last = tabbedPane.getComponentAt(i);
+                    last = tabbedPane.get().getComponentAt(i);
                 }
                 if (tit.equals(GRAPH_TITLE)) {
-                    graph = tabbedPane.getComponentAt(i);
+                    graph = tabbedPane.get().getComponentAt(i);
                 }
             }
-            tabbedPane.removeAll();
+            tabbedPane.get().removeAll();
             if (null != graph) {
-                tabbedPane.add(GRAPH_TITLE, graph);
+                tabbedPane.get().add(GRAPH_TITLE, graph);
             }
             if (null != last) {
-                tabbedPane.add(LAST_TITLE, last);
+                tabbedPane.get().add(LAST_TITLE, last);
             }
             if (advanced.get()) {
                 JTree tree = convo.toTree();
                 expandAllNodes(tree);
-                tabbedPane.add("Tree", new JScrollPane(tree));
+                tabbedPane.get().add("Tree", new JScrollPane(tree));
                 StringBuilder flat = convo.flat();
-                tabbedPane.add("Flat", new JScrollPane(new JTextArea(flat.toString())));
-                for (ClNode n : convo.getNodes()) {
-                    addReplaceTab(n);
-                }
+                tabbedPane.get().add("Flat", new JScrollPane(taFlat = new JTextArea()));
+                taFlat.setWrapStyleWord(true);
+                taFlat.setText(flat.toString());
+            }
+            for (ClNode n : convo.getNodes()) {
+                addReplaceTab(n);
             }
             frame.repaint();
         } catch (Exception ex) {
@@ -513,6 +519,7 @@ public class PersonAI {
         working.setIndeterminate(false);
         working.setStringPainted(true);
         working.setString(String.format("%.3f s", (System.nanoTime() - workingStart) / 1E9));
+        }
     }
 
     private void setTabText(String title, String text) {
@@ -521,35 +528,41 @@ public class PersonAI {
     }
 
     private void closeTab(ClNode node) {
+        synchronized (tabbedPane) {
         String t = node.getName() + "." + node.label;
-        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
-            if (tabbedPane.getTitleAt(i).equals(t)) {
-                tabbedPane.remove(i);
+        for (int i = 0; i < tabbedPane.get().getComponentCount(); i++) {
+            if (tabbedPane.get().getTitleAt(i).equals(t)) {
+                tabbedPane.get().remove(i);
                 return;
             }
+        }
         }
     }
 
     public void jumpTo(ClNode node) {
+        synchronized (tabbedPane) {
         String title = node.getName() + "." + node.label;
 
-        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
-            if (tabbedPane.getTitleAt(i).equals(title)) {
-                tabbedPane.setSelectedIndex(i);
+        for (int i = 0; i < tabbedPane.get().getComponentCount(); i++) {
+            if (tabbedPane.get().getTitleAt(i).equals(title)) {
+                tabbedPane.get().setSelectedIndex(i);
                 return;
             }
+        }
         }
     }
 
     public void setTab(String title, Component comp) {
-        for (int i = 0; i < tabbedPane.getComponentCount(); i++) {
-            if (tabbedPane.getTitleAt(i).equals(title)) {
+        synchronized (tabbedPane) {
+        for (int i = 0; i < tabbedPane.get().getComponentCount(); i++) {
+            if (tabbedPane.get().getTitleAt(i).equals(title)) {
                 System.out.println("Dup? " + title);
-                tabbedPane.setComponentAt(i, comp);
+                tabbedPane.get().setComponentAt(i, comp);
                 return;
             }
         }
-        tabbedPane.add(title, comp);
+        tabbedPane.get().add(title, comp);
+        }
     }
 
     public final synchronized void putOnBar(Component component) {
@@ -746,7 +759,7 @@ public class PersonAI {
             try {
                 String answer;
                 if (null != curIns) {
-                    synchronized (lastInteraction) {
+                    synchronized (tabbedPane) {
                         lastInteraction.append("SYSTEM: ").append(ToT_SYSTEM).append(EOLN);
                         lastInteraction.append("QUESTION: ").append(curIns.prompt).append(EOLN);
                         lastInteraction.append("TEXT: ").append(question).append(EOLN);
@@ -757,10 +770,12 @@ public class PersonAI {
                         new Message(Message.ROLES.assistant, question)
                     });
                 } else {
+                    synchronized (tabbedPane) {
                     lastInteraction.append("TEXT: ").append(question).append(EOLN);
                     answer = OpenAIAPI.makeRequest(null, question);
+                    }
                 }
-                synchronized (lastInteraction) {
+                synchronized (tabbedPane) {
                     lastInteraction.append(answer).append(EOLN);
                 }
                 publish("2:Asking LLM for tagline");
@@ -780,7 +795,7 @@ public class PersonAI {
                         totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC);
                 double cost = totalPromptTokens.get() * ITC + totalOutputTokens.get() * OTC;
                 costLabel.setText(String.format("Cost: $%.2f", cost));
-                synchronized (lastInteraction) {
+                synchronized (tabbedPane) {
                     lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
                 }
                 publish("3:Rebuilding graph");
@@ -798,9 +813,9 @@ public class PersonAI {
 
         @Override
         protected void process(List<String> chunks) {
-            synchronized (lastInteraction) {
+            synchronized (tabbedPane) {
                 setTabText(LAST_TITLE, lastInteraction.toString());
-                tabbedPane.setSelectedIndex(0);
+                tabbedPane.get().setSelectedIndex(0);
             }
             for (String msg : chunks) {
                 if (msg.indexOf(':') == 1) {
