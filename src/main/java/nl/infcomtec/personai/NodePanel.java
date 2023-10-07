@@ -47,8 +47,8 @@ public class NodePanel extends JPanel {
     private final JButton btApply;
     private final JComboBox<String> cbShapes;
     private final JEditorPane editorPane;
-    private final JPanel jPanel1;
-    private final JScrollPane jScrollPane1;
+    private final JPanel sidePanel;
+    private final JScrollPane mainScrollPane;
     private final JCheckBox btEdit;
     private final JSlider fontSizer;
     private final JTextField tfLabel;
@@ -72,8 +72,8 @@ public class NodePanel extends JPanel {
         this.btApply = new JButton();
         this.cbShapes = new JComboBox<>();
         this.editorPane = new JEditorPane();
-        this.jPanel1 = new JPanel();
-        this.jScrollPane1 = new JScrollPane();
+        this.sidePanel = new JPanel();
+        this.mainScrollPane = new JScrollPane();
         this.fontSizer = new JSlider();
         this.tfLabel = new JTextField();
         this.node = cvNode;
@@ -137,9 +137,9 @@ public class NodePanel extends JPanel {
         }
         editorPane.setContentType("text/html");
         editorPane.setFont(dFont.get());
-        jScrollPane1.setViewportView(editorPane);
-        add(jScrollPane1, java.awt.BorderLayout.CENTER);
-        jPanel1.setLayout(new GridBagLayout());
+        mainScrollPane.setViewportView(editorPane);
+        add(mainScrollPane, java.awt.BorderLayout.CENTER);
+        sidePanel.setLayout(new GridBagLayout());
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0;
         gc.gridy = 0;
@@ -147,8 +147,8 @@ public class NodePanel extends JPanel {
         gc.anchor = GridBagConstraints.WEST;
         tfLabel.setColumns(20);
         tfLabel.setText(node.label);
-        enclosed(gc, "Display label", jPanel1, tfLabel);
-        enclosed(gc, "Edit the main text", jPanel1, btEdit);
+        enclosed(gc, "Display label", sidePanel, tfLabel);
+        enclosed(gc, "Edit the main text", sidePanel, btEdit);
         fontSizer.setMaximum(48);
         fontSizer.setMinimum(6);
         fontSizer.setToolTipText("Change the size of the displayed text.");
@@ -156,13 +156,13 @@ public class NodePanel extends JPanel {
         fontSizer.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent evt) {
-                jSlider1StateChanged(evt);
+                fontSizeChanged(evt);
             }
         });
-        enclosed(gc, "Font size", jPanel1, fontSizer);
+        enclosed(gc, "Font size", sidePanel, fontSizer);
         cbShapes.setEditable(true);
         cbShapes.setModel(new DefaultComboBoxModel<>(new String[]{"ellipse", "box", "circle", "diamond", "rectangle", "plaintext", "triangle", "hexagon", "octagon", "parallelogram"}));
-        enclosed(gc, "Shape", jPanel1, cbShapes);
+        enclosed(gc, "Shape", sidePanel, cbShapes);
         btApply.setText("Apply");
         btApply.addActionListener(new java.awt.event.ActionListener() {
             @Override
@@ -186,15 +186,11 @@ public class NodePanel extends JPanel {
                 btEdit.setSelected(true);
             }
         });
-        enclosed(gc, "Actions", jPanel1, btApply, btReset);
-        jPanel1.add(Box.createVerticalGlue());
+        enclosed(gc, "Actions", sidePanel, btApply, btReset);
+        sidePanel.add(Box.createVerticalGlue());
         gc.gridwidth = 2;
-        jPanel1.add(owner.graphPanel(node), gc);
-        gc.gridy++;
-        jPanel1.add(owner.createInsPanel(), gc);
-        gc.gridy++;
-        jPanel1.add(owner.interactionPanel(), gc);
-        add(jPanel1, java.awt.BorderLayout.EAST);
+        sidePanel.add(owner.graphPanel(node), gc);
+        add(sidePanel, java.awt.BorderLayout.EAST);
     }
 
     private void enclosed(GridBagConstraints gc, String title, JPanel pn, Component... comp) {
@@ -210,7 +206,7 @@ public class NodePanel extends JPanel {
         gc.gridy++;
     }
 
-    private void jSlider1StateChanged(ChangeEvent evt) {
+    private void fontSizeChanged(ChangeEvent evt) {
         int s = fontSizer.getValue();
         if (s != dFont.get().getSize()) {
             dFont.set(new Font(dFont.get().getFontName(), dFont.get().getStyle(), s));

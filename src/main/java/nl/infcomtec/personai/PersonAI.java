@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -666,14 +667,34 @@ public class PersonAI {
         return ret;
     }
 
+    private static class EdgeLabel extends JTextField {
+
+        private final List<EdgeLabel> others;
+        private final ClEdge edge;
+
+        public EdgeLabel(List<EdgeLabel> others, ClEdge edge) {
+            this.others = others;
+            this.edge = edge;
+            others.add(this);
+            setText(edge.label);
+        }
+    }
+
+    /**
+     * Returns a panel to manage any edges linking this node.
+     *
+     * @param ref The node being referenced.
+     * @return A fixed-size panel.
+     */
     public Component graphPanel(ClNode ref) {
+        final LinkedList<EdgeLabel> others = new LinkedList<>();
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(2, 2, 2, 2);
+        gbc.insets = new Insets(2, 5, 2, 5);
         gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
         gbc.gridy = 0;
         JPanel links = new JPanel(new GridBagLayout());
-        //links.setPreferredSize(new Dimension(config.w20PerDeco, config.h20Per));
         links.add(new JLabel("Link"), gbc);
         gbc.gridx++;
         links.add(new JLabel("Node1"), gbc);
@@ -686,7 +707,7 @@ public class PersonAI {
         gbc.gridy = 1;
         for (ClEdge e : convo.getEdges()) {
             if (e.fromNode.equals(ref) || e.toNode.equals(ref)) {
-                links.add(new JTextField(e.label), gbc);
+                links.add(new EdgeLabel(others, e), gbc);
                 gbc.gridx++;
                 links.add(new JLabel(e.fromNode.getName()), gbc);
                 gbc.gridx++;
@@ -697,11 +718,21 @@ public class PersonAI {
                 gbc.gridy++;
             }
         }
+        gbc.gridwidth = 4;
+        links.add(new JButton(new AbstractAction("Update link labels") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                for (EdgeLabel e : others) {
+                    e.edge.label = e.getText();
+                }
+                rebuild();
+            }
+        }), gbc);
         JScrollPane ret = new JScrollPane(links);
         ret.setBorder(
                 BorderFactory.createTitledBorder(
                         BorderFactory.createLineBorder(Color.GREEN, 5), "Links"));
-        ret.setPreferredSize(new Dimension(config.w20Per, config.h20Per));
+        ret.setPreferredSize(new Dimension(config.w20Per, config.h20Per * 2));
         return ret;
     }
 
