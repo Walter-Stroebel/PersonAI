@@ -62,16 +62,12 @@ public class ImageObject extends Image {
         listeners.add(listener);
     }
 
-    /**
-     * For forwarding.
-     */
     public enum MouseEvents {
-        clicked
+        clicked, dragged, moved, pressed, released
     };
 
     public synchronized void forwardMouse(MouseEvents ev, MouseEvent e) {
         for (ImageObjectListener listener : listeners) {
-            //System.out.println("Calling listener " + listener.name);
             listener.mouseEvent(this, ev, e);
         }
 

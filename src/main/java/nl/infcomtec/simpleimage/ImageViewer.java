@@ -27,6 +27,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
 
 /**
  * Simple image viewer with drag and scale.
@@ -244,8 +245,17 @@ public class ImageViewer {
 
                 @Override
                 public void mousePressed(MouseEvent e) {
-                    lastX = e.getX();
-                    lastY = e.getY();
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.pressed, e);
+                    } else {
+                        lastX = e.getX();
+                        lastY = e.getY();
+                    }
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    imgObj.forwardMouse(ImageObject.MouseEvents.released, e);
                 }
 
                 @Override
@@ -255,11 +265,15 @@ public class ImageViewer {
 
                 @Override
                 public void mouseDragged(MouseEvent e) {
-                    ofsX += e.getX() - lastX;
-                    ofsY += e.getY() - lastY;
-                    lastX = e.getX();
-                    lastY = e.getY();
-                    repaint(); // Repaint the panel to reflect the new position
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.dragged, e);
+                    } else {
+                        ofsX += e.getX() - lastX;
+                        ofsY += e.getY() - lastY;
+                        lastX = e.getX();
+                        lastY = e.getY();
+                        repaint(); // Repaint the panel to reflect the new position
+                    }
                 }
 
                 @Override
