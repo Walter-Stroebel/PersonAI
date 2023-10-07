@@ -53,12 +53,12 @@ public class NodePanel extends JPanel {
     private final JSlider fontSizer;
     private final JTextField tfLabel;
     private boolean html = true;
-            private String wholeText;
-            private int selectionStart;
-            private int selectionEnd;
-            private String textBeforeSelection;
-            private String selectedText;
-            private String textAfterSelection;
+    private String wholeText;
+    private int selectionStart;
+    private int selectionEnd;
+    private String textBeforeSelection;
+    private String selectedText;
+    private String textAfterSelection;
 
     /**
      * Creates new form NodePanel
@@ -103,7 +103,7 @@ public class NodePanel extends JPanel {
         JMenuItem breakNodeItem = new JMenuItem(new AbstractAction("Split text into nodes") {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                owner.splitNode(node, textBeforeSelection,selectedText,textAfterSelection);
+                owner.splitNode(node, textBeforeSelection, selectedText, textAfterSelection);
             }
         });
 
@@ -116,17 +116,17 @@ public class NodePanel extends JPanel {
                     if (html) {
                         JOptionPane.showMessageDialog(editorPane, "Right click is not supported in html mode");
                     } else {
-    // Get the whole text
-    wholeText = editorPane.getText();
+                        // Get the whole text
+                        wholeText = editorPane.getText();
 
-    // Get the start and end indices of the selected text
-    selectionStart = editorPane.getSelectionStart();
-    selectionEnd = editorPane.getSelectionEnd();
+                        // Get the start and end indices of the selected text
+                        selectionStart = editorPane.getSelectionStart();
+                        selectionEnd = editorPane.getSelectionEnd();
 
-    // Extract the parts of the text
-    textBeforeSelection = wholeText.substring(0, selectionStart);
-    selectedText = editorPane.getSelectedText();
-    textAfterSelection = wholeText.substring(selectionEnd);
+                        // Extract the parts of the text
+                        textBeforeSelection = wholeText.substring(0, selectionStart);
+                        selectedText = editorPane.getSelectedText();
+                        textAfterSelection = wholeText.substring(selectionEnd);
                         popupMenu.show(editorPane, e.getX(), e.getY());
                     }
                 }

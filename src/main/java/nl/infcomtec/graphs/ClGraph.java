@@ -97,24 +97,24 @@ public class ClGraph {
 
     private void update(UText ut) {
         ClNode get = nodeMap.get(ut.uid);
-        if (null==get){
-            JOptionPane.showMessageDialog(null, "You messed up a marker "+ut.uid);
+        if (null == get) {
+            JOptionPane.showMessageDialog(null, "You messed up a marker " + ut.uid);
             return;
         }
-        if(get instanceof ClEdge) {
+        if (get instanceof ClEdge) {
             // TODO Edge editing not supported
             return;
         }
-        int eoLab=ut.text.indexOf("#");
-        int eoShp=ut.text.indexOf("#",eoLab+1);
-        get.setUserObj(ut.text.substring(eoShp+1).trim());
-        get.shape=ut.text.substring(eoLab+1, eoShp);
-        get.label=ut.text.substring(0, eoLab);
+        int eoLab = ut.text.indexOf("#");
+        int eoShp = ut.text.indexOf("#", eoLab + 1);
+        get.setUserObj(ut.text.substring(eoShp + 1).trim());
+        get.shape = ut.text.substring(eoLab + 1, eoShp);
+        get.label = ut.text.substring(0, eoLab);
     }
 
     public void parse(String text) {
         List<UText> texts = getTexts(text);
-        for (UText ut:texts){
+        for (UText ut : texts) {
             update(ut);
         }
     }
@@ -565,7 +565,7 @@ public class ClGraph {
             }
         }
         if (nId.startsWith("N")) {
-            int id = Integer.parseInt(nId.substring(1),36);
+            int id = Integer.parseInt(nId.substring(1), 36);
             return nodeMap.get(id);
         }
         return null;

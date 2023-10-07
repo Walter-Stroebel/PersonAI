@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 
 /**
  * Keep track of token usage.
+ *
  * @author Walter Stroebel
  */
 public class Usage {
