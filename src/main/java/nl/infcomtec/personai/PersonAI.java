@@ -39,13 +39,11 @@ import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
+import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -86,12 +84,11 @@ public class PersonAI {
     public final static double ITC = 0.003 / 1000;
     public final static double OTC = 0.004 / 1000;
     private static final String EOLN = System.lineSeparator();
-    private static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
+    public static final String ToT_SYSTEM = "You are being used with tree-of-thought tooling. The following are previous messages and an instruction." + EOLN;
     public static final String INS_FILENAME = "instructions.json";
     private static final String GRAPH_TITLE = "Graph";
+    private static final String ASKAI_TITLE = "Ask AI";
     private static final String LAST_TITLE = "Last Interaction";
-    private Component graph;
-    private Component last;
     public static Config config;
 
     /**
@@ -149,21 +146,52 @@ public class PersonAI {
             System.exit(1);
         }
     }
+
+    public static String getResource(String name) {
+        String path = name.startsWith("/") ? name : "/" + name;
+        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(PersonAI.class.getResourceAsStream(path)))) {
+            StringBuilder sb = new StringBuilder();
+            for (String s = bfr.readLine(); s != null; s = bfr.readLine()) {
+                sb.append(s).append(EOLN);
+            }
+            return sb.toString();
+        } catch (Exception ex) {
+            return "Reading from resource failed: " + ex.getMessage();
+        }
+    }
+
+    public static FileNameExtensionFilter getExtFilter() {
+        return new FileNameExtensionFilter("PersonAI FILES", "pai");
+    }
+
+    /**
+     * Method to expand all nodes in a JTree
+     *
+     * @param tree
+     */
+    public static void expandAllNodes(JTree tree) {
+        int row = 0;
+        while (row < tree.getRowCount()) {
+            tree.expandRow(row);
+            row++;
+        }
+    }
+    private Component graph;
+    private Component last;
     public ImageObject dot;
     public JFrame frame;
     public JToolBar toolBar;
     public final AtomicReference<JTabbedPane> tabbedPane = new AtomicReference<>();
     private Instructions ins;
-    private Instruction curIns;
     public Conversation convo = new Conversation();
     private ImageViewer dotViewer;
     private Vagrant vagrant;
     private JLabel costLabel;
     private JTextArea progressMsg;
-    private ButtonGroup insGrp;
     private final JProgressBar working = new JProgressBar();
     private long workingStart;
     private JTextArea taFlat;
+    private Component askAI;
 
     public PersonAI() throws IOException {
         initGUI();
@@ -214,7 +242,6 @@ public class PersonAI {
             JPanel viewPanel = dotViewer.getScalePanPanel();
             dot.addListener(new GraphMouse("Mouse"));
             grPane.add(viewPanel, BorderLayout.CENTER);
-            JButton submit = new JButton(new SubmitAction("Send to AI/LLM")); // TODO
             if (convo.isEmpty()) {
                 ClNode start = convo.newNode("Start", "box", "");
                 addReplaceTab(start).setEditMode(true);
@@ -222,35 +249,54 @@ public class PersonAI {
                 addReplaceTab(convo.getFirstNode());
             }
             tabbedPane.get().addTab(GRAPH_TITLE, grPane);
+            {
+                LLMPanel ask = new LLMPanel(this, new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                        frame.repaint();
+                    }
+                }, new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent ae) {
+                        rebuild();
+                    }
+                });
+                JPanel big = new JPanel(new BorderLayout());
+                big.add(ask, BorderLayout.CENTER);
+                tabbedPane.get().addTab(ASKAI_TITLE, big);
+            }
             addButtons();
         }
     }
 
-    public Component createInsPanel() {
+    public JButton aiSubmit(JEditorPane system, JEditorPane question, JEditorPane text) {
+        return new JButton(new SubmitAction("Send to AI/LLM", system, question, text));
+    }
+
+    public Component createInsPanel(final JEditorPane pane) {
         JPanel insPan = new JPanel(new FlowLayout());
         ins = Instructions.load(new File(WORK_DIR, INS_FILENAME), gson);
         insPan.add(new JLabel("Pick an operation: "));
-        insGrp = new ButtonGroup();
         for (final Instruction i : ins.insList) {
-            JCheckBox jb = new JCheckBox(new AbstractAction(i.description) {
+            JButton jb = new JButton(new AbstractAction(i.description) {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
-                    if (!convo.hasSelection()) {
-                        JOptionPane.showMessageDialog(frame, "Please select a node first.");
-                        return;
+                    StringBuilder text = new StringBuilder(pane.getText().trim());
+                    if (text.length() > 0) {
+                        text.append(EOLN);
                     }
-                    curIns = i;
+                    text.append(i.prompt);
+                    pane.setText(text.toString());
                 }
             });
             jb.setToolTipText(i.prompt);
             insPan.add(jb);
-            insGrp.add(jb);
         }
         insPan.setPreferredSize(new Dimension(config.w20PerDeco, config.hFull));
         JScrollPane ret = new JScrollPane(insPan);
         ret.setBorder(
                 BorderFactory.createTitledBorder(
-                        BorderFactory.createLineBorder(Color.BLUE, 5), "Suggestions"));
+                        BorderFactory.createLineBorder(Color.BLUE, 5), "Suggestions for questions"));
         ret.setPreferredSize(new Dimension(config.w20Per, config.h20Per));
         return ret;
     }
@@ -412,23 +458,6 @@ public class PersonAI {
         putOnBar(working);
     }
 
-    public static String getResource(String name) {
-        String path = name.startsWith("/") ? name : "/" + name;
-        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(PersonAI.class.getResourceAsStream(path)))) {
-            StringBuilder sb = new StringBuilder();
-            for (String s = bfr.readLine(); s != null; s = bfr.readLine()) {
-                sb.append(s).append(EOLN);
-            }
-            return sb.toString();
-        } catch (Exception ex) {
-            return "Reading from resource failed: " + ex.getMessage();
-        }
-    }
-
-    public static FileNameExtensionFilter getExtFilter() {
-        return new FileNameExtensionFilter("PersonAI FILES", "pai");
-    }
-
     /**
      * Rebuild all.
      */
@@ -465,19 +494,6 @@ public class PersonAI {
 
     }
 
-    /**
-     * Method to expand all nodes in a JTree
-     *
-     * @param tree
-     */
-    public static void expandAllNodes(JTree tree) {
-        int row = 0;
-        while (row < tree.getRowCount()) {
-            tree.expandRow(row);
-            row++;
-        }
-    }
-
     private void doRebuild() {
         synchronized (tabbedPane) {
             try {
@@ -493,10 +509,16 @@ public class PersonAI {
                     if (tit.equals(GRAPH_TITLE)) {
                         graph = tabbedPane.get().getComponentAt(i);
                     }
+                    if (tit.equals(ASKAI_TITLE)) {
+                        askAI = tabbedPane.get().getComponentAt(i);
+                    }
                 }
                 tabbedPane.get().removeAll();
                 if (null != graph) {
                     tabbedPane.get().add(GRAPH_TITLE, graph);
+                }
+                if (null != askAI) {
+                    tabbedPane.get().add(ASKAI_TITLE, askAI);
                 }
                 if (null != last) {
                     tabbedPane.get().add(LAST_TITLE, last);
@@ -667,19 +689,6 @@ public class PersonAI {
         return ret;
     }
 
-    private static class EdgeLabel extends JTextField {
-
-        private final List<EdgeLabel> others;
-        private final ClEdge edge;
-
-        public EdgeLabel(List<EdgeLabel> others, ClEdge edge) {
-            this.others = others;
-            this.edge = edge;
-            others.add(this);
-            setText(edge.label);
-        }
-    }
-
     /**
      * Returns a panel to manage any edges linking this node.
      *
@@ -736,6 +745,19 @@ public class PersonAI {
         return ret;
     }
 
+    private static class EdgeLabel extends JTextField {
+
+        private final List<EdgeLabel> others;
+        private final ClEdge edge;
+
+        public EdgeLabel(List<EdgeLabel> others, ClEdge edge) {
+            this.others = others;
+            this.edge = edge;
+            others.add(this);
+            setText(edge.label);
+        }
+    }
+
     private class GraphMouse extends ImageObject.ImageObjectListener {
 
         private ClNode nwEdge;
@@ -765,19 +787,27 @@ public class PersonAI {
 
     private class SubmitAction extends AbstractAction {
 
-        public SubmitAction(String name) {
+        private final JEditorPane system;
+        private final JEditorPane question;
+        private final JEditorPane text;
+
+        public SubmitAction(String name, JEditorPane system, JEditorPane question, JEditorPane text) {
             super(name);
+            this.question = question;
+            this.system = system;
+            this.text = text;
         }
 
         @Override
         public void actionPerformed(ActionEvent ae) {
-            StringBuilder sb = convo.getSelectedText("");
-            String question = sb.toString().trim();
-            if ((!question.isEmpty())) {
+            String p = system.getText().trim();
+            String q = question.getText().trim();
+            String t = text.getText().trim();
+            if ((!q.isEmpty())) {
                 workingStart = System.nanoTime();
                 working.setIndeterminate(true);
                 progressMsg.setText("");
-                ApiRequestWorker worker = new ApiRequestWorker(question);
+                ApiRequestWorker worker = new ApiRequestWorker(p, q, t);
                 worker.execute();
             }
         }
@@ -788,9 +818,13 @@ public class PersonAI {
         private final String question;
         private Exception failure;
         private final StringBuilder lastInteraction = new StringBuilder();
+        private final String system;
+        private final String text;
 
-        public ApiRequestWorker(String question) {
+        public ApiRequestWorker(String system, String question, String text) {
             this.question = question;
+            this.system = system;
+            this.text = text;
         }
 
         @Override
@@ -798,30 +832,31 @@ public class PersonAI {
             publish("1:Sending question to LLM");
             try {
                 String answer;
-                if (null != curIns) {
-                    synchronized (tabbedPane) {
-                        lastInteraction.append("SYSTEM: ").append(ToT_SYSTEM).append(EOLN);
-                        lastInteraction.append("QUESTION: ").append(curIns.prompt).append(EOLN);
-                        lastInteraction.append("TEXT: ").append(question).append(EOLN);
+                synchronized (tabbedPane) {
+                    lastInteraction.append("SYSTEM: ").append(system).append(EOLN);
+                    lastInteraction.append("QUESTION: ").append(question).append(EOLN);
+                    if (!text.isEmpty()) {
+                        lastInteraction.append("TEXT: ").append(text).append(EOLN);
                     }
+                }
+                if (!text.isEmpty()) {
                     answer = OpenAIAPI.makeRequest(new Message[]{
-                        new Message(Message.ROLES.system, ToT_SYSTEM),
-                        new Message(Message.ROLES.user, curIns.prompt),
-                        new Message(Message.ROLES.assistant, question)
+                        new Message(Message.ROLES.system, system),
+                        new Message(Message.ROLES.user, question),
+                        new Message(Message.ROLES.assistant, text)
                     });
                 } else {
-                    synchronized (tabbedPane) {
-                        lastInteraction.append("TEXT: ").append(question).append(EOLN);
-                        answer = OpenAIAPI.makeRequest(null, question);
-                    }
+                    answer = OpenAIAPI.makeRequest(new Message[]{
+                        new Message(Message.ROLES.system, system),
+                        new Message(Message.ROLES.user, question)
+                    });
                 }
                 synchronized (tabbedPane) {
                     lastInteraction.append(answer).append(EOLN);
                 }
                 publish("2:Asking LLM for tagline");
-                String tagLine = OpenAIAPI.makeRequest("Give me a short tagline of at most 20 characters.", answer);
+                String tagLine = OpenAIAPI.makeRequest("Give me a short descriptive tag of at most 20 characters.", answer);
                 convo.clearSelection();
-                insGrp.clearSelection();
                 // XXX cost calculation
                 for (Iterator<Usage> it = OpenAIAPI.usages.iterator(); it.hasNext();) {
                     Usage us = it.next();
@@ -839,9 +874,8 @@ public class PersonAI {
                     lastInteraction.append("Tagline: ").append(tagLine).append(EOLN);
                 }
                 publish("3:Rebuilding graph");
-                ClNode q = convo.newNode(null != curIns ? curIns.description : "Question", "diamond", question);
+                ClNode q = convo.newNode("Question", "diamond", question);
                 convo.addAnswer(q, tagLine, answer);
-                // TODO topic.setText(new PandocConverter().convertMarkdownToText(answer));
                 doRebuild();
                 publish("0:Ready for next question");
             } catch (Exception e) {
