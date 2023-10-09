@@ -27,6 +27,20 @@ public class PandocConverter extends ToolManager {
     }
 
     /**
+     * Markdown to HTML.
+     *
+     * @param markdownInput Markdown.
+     * @return HTML.
+     */
+    public String convertMarkdownToRTF(String markdownInput) {
+        setInput(markdownInput);
+        // Set up the command to run Pandoc
+        setCommand("pandoc", "-f", "markdown", "-t", "rtf");
+        run();
+        return output;
+    }
+
+    /**
      * HTML to Markdown.
      *
      * @param htmlInput HTML.
@@ -36,6 +50,20 @@ public class PandocConverter extends ToolManager {
         setInput(htmlInput);
         // Set up the command to run Pandoc
         setCommand("pandoc", "-f", "html", "-t", "markdown");
+        run();
+        return output;
+    }
+
+    /**
+     * RTF to Markdown.
+     *
+     * @param rtfInput HTML.
+     * @return Markdown.
+     */
+    public String convertRTFToMarkdown(String rtfInput) {
+        setInput(rtfInput);
+        // Set up the command to run Pandoc
+        setCommand("pandoc", "-f", "rtf", "-t", "markdown");
         run();
         return output;
     }

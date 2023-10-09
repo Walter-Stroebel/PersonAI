@@ -111,6 +111,7 @@ public class LLMPanel extends JPanel {
         system.setEditable(true);
         system.setContentType("text/plain");
         system.addMouseListener(ma);
+        system.setText(PersonAI.ToT_SYSTEM);
         sidePanel.setLayout(new GridBagLayout());
         GridBagConstraints sideGBC = new GridBagConstraints();
         sideGBC.gridx = 0;
