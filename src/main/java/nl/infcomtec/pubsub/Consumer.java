@@ -1,5 +1,5 @@
 /**
- *
+ * Base Consumer.
  * @author walter
  */
 package nl.infcomtec.pubsub;

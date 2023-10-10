@@ -51,10 +51,11 @@ public abstract class Producer<T> {
      * Publish a message.
      *
      * @param message Any object.
+     * @return false if the topic was closed. 
      * @throws Exception generic as an implementation might have its own
      * exceptions.
      */
-    public abstract void sendMessage(T message) throws Exception;
+    public abstract boolean sendMessage(T message) throws Exception;
 
     /** 
      * Sample producer for any kind of object.
@@ -64,13 +65,13 @@ public abstract class Producer<T> {
     public static Producer<Object> anyObject(String topicName) {
         return new Producer<Object>(Topic.openOrCreate(topicName)) {
             @Override
-            public void sendMessage(Object message) throws Exception {
+            public boolean sendMessage(Object message) throws Exception {
                 try ( ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     try ( ObjectOutputStream oos = new ObjectOutputStream(baos)) {
                         oos.writeObject(message);
                     }
                     baos.flush();
-                    produce(baos.toByteArray());
+                    return produce(baos.toByteArray());
                 }
             }
         };
@@ -84,13 +85,13 @@ public abstract class Producer<T> {
     public static Producer<String> stringUTF(String topicName) {
         return new Producer<String>(Topic.openOrCreate(topicName)) {
             @Override
-            public void sendMessage(String message) throws Exception {
+            public boolean sendMessage(String message) throws Exception {
                 try ( ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     try ( ObjectOutputStream oos = new ObjectOutputStream(baos)) {
                         oos.writeUTF(message);
                     }
                     baos.flush();
-                    produce(baos.toByteArray());
+                    return produce(baos.toByteArray());
                 }
             }
         };

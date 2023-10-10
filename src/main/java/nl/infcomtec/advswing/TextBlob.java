@@ -1,7 +1,14 @@
 package nl.infcomtec.advswing;
 
+import java.time.Duration;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import nl.infcomtec.pubsub.Consumer;
+import nl.infcomtec.pubsub.Producer;
 import nl.infcomtec.tools.PandocConverter;
 
 /**
@@ -15,10 +22,7 @@ public class TextBlob {
     private final StringBuilder asHTML;
     private final StringBuilder asRTF;
 
-    private enum LastSet {
-        PLAIN, HTML, RTF
-    }
-    private LastSet lastSet = LastSet.PLAIN;
+    private TextType lastSet = TextType.PLAIN;
     private boolean plainValid = true;
     private boolean htmlValid = true;
     private boolean rtfValid = true;
@@ -95,23 +99,117 @@ public class TextBlob {
         version.incrementAndGet();
         asPlain.setLength(0);
         asPlain.append(text);
-        lastSet = LastSet.PLAIN;
+        lastSet = TextType.PLAIN;
         plainValid = true;
+        if (!tellTheWorld.isEmpty()) {
+            tellAll(new TypedText(TextType.PLAIN, text));
+        }
     }
 
     public synchronized void setHTML(String text) {
         version.incrementAndGet();
         asHTML.setLength(0);
         asHTML.append(text);
-        lastSet = LastSet.HTML;
+        lastSet = TextType.HTML;
         htmlValid = true;
+        if (!tellTheWorld.isEmpty()) {
+            tellAll(new TypedText(TextType.HTML, text));
+        }
     }
 
     public synchronized void setRTF(String text) {
         version.incrementAndGet();
         asRTF.setLength(0);
         asRTF.append(text);
-        lastSet = LastSet.RTF;
+        lastSet = TextType.RTF;
         rtfValid = true;
+        if (!tellTheWorld.isEmpty()) {
+            tellAll(new TypedText(TextType.RTF, text));
+        }
+    }
+
+    private void tellAll(TypedText tt) {
+        for (Iterator<Producer<TypedText>> it = tellTheWorld.iterator(); it.hasNext();) {
+            Producer<TypedText> p = it.next();
+            try {
+                if (!p.sendMessage(tt)) {
+                    it.remove();
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(TextBlob.class.getName()).log(Level.SEVERE, null, ex);
+                it.remove();
+            }
+        }
+    }
+
+    public void set(TypedText tt) {
+        switch (tt.type) {
+            case HTML:
+                setHTML(tt.text);
+                break;
+            case RTF:
+                setRTF(tt.text);
+                break;
+            case PLAIN:
+                setPlain(tt.text);
+                break;
+        }
+    }
+    private ConcurrentLinkedQueue<Producer<TypedText>> tellTheWorld = new ConcurrentLinkedQueue<>();
+
+    public void feedTopic(final Producer<TypedText> prod) {
+        tellTheWorld.add(prod);
+    }
+
+    public void followTopic(final Consumer<TypedText> cons) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        TypedText messageFromTopic = cons.getMessageFromTopic(Duration.ofSeconds(1));
+                        if (null != messageFromTopic) {
+                            set(messageFromTopic);
+                        } else {
+                            break;
+                        }
+                    } catch (Exception ex) {
+                        Logger.getLogger(TextBlob.class.getName()).log(Level.SEVERE, null, ex);
+                        break;
+                    }
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * For Pub-Sub.
+     *
+     */
+    public static class TypedText {
+
+        public final TextType type;
+        public final String text;
+
+        public TypedText(TextType type, String text) {
+            this.type = type;
+            this.text = text;
+        }
+
+        @Override
+        public String toString() {
+            return "TypedText{"
+                    + "type=" + type
+                    + ", text="
+                    + (null != text && text.length() > 20 ? text.substring(0, 20) : text)
+                    + '}';
+        }
+    }
+
+    /**
+     * Simple text type.
+     */
+    public enum TextType {
+        PLAIN, HTML, RTF
     }
 }
