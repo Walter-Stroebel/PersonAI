@@ -27,7 +27,7 @@ public class PandocConverter extends ToolManager {
     }
 
     /**
-     * Markdown to HTML.
+     * Markdown to RTF. Note that RTF support in Java is pretty broken.
      *
      * @param markdownInput Markdown.
      * @return HTML.
@@ -55,7 +55,7 @@ public class PandocConverter extends ToolManager {
     }
 
     /**
-     * RTF to Markdown.
+     * RTF to Markdown. Note that RTF support in Java is pretty broken.
      *
      * @param rtfInput HTML.
      * @return Markdown.

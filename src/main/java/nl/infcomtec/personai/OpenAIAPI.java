@@ -26,6 +26,7 @@ public class OpenAIAPI {
 
     private static final String API_ENDPOINT = "https://api.openai.com/v1/chat/completions";
     public static final ConcurrentLinkedDeque<Usage> usages = new ConcurrentLinkedDeque<>();
+    public static final String MODEL_NAME = "gpt-3.5-turbo-16k";
 
     /**
      * OpenAI key <b>NEVER IN GIT!!!</b>
@@ -33,7 +34,7 @@ public class OpenAIAPI {
      * @return the key.
      */
     public static String getKey() {
-        try ( FileReader reader = new FileReader(new File(System.getProperty("user.home"), "openai_aug.key"))) {
+        try (FileReader reader = new FileReader(new File(System.getProperty("user.home"), "openai_aug.key"))) {
             StringBuilder sb = new StringBuilder();
             int ch;
             while ((ch = reader.read()) != -1) {
@@ -90,7 +91,7 @@ public class OpenAIAPI {
                     .writeTimeout(30, TimeUnit.SECONDS);
             OkHttpClient client = builder.build();
             JsonObject messageJson = new JsonObject();
-            messageJson.addProperty("model", "gpt-3.5-turbo-16k");
+            messageJson.addProperty("model", MODEL_NAME);
             JsonArray messageArray = new JsonArray();
             for (Message e : messages) {
                 messageArray.add(e.get());
@@ -104,7 +105,7 @@ public class OpenAIAPI {
                     .addHeader("Authorization", "Bearer " + getKey())
                     .post(requestBody)
                     .build();
-            try ( Response response = client.newCall(request).execute()) {
+            try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
                     throw new IOException("Unexpected code " + response);
                 }
