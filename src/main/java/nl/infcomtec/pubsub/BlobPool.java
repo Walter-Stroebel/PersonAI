@@ -374,22 +374,15 @@ public class BlobPool {
             public void run() {
                 while (true) {
                     long timeOfDeath = getRealTime() - expireSeconds.get() * 1000000000L;
-                    int invoice = 0;
                     synchronized (pool) {
                         for (List<Blob> blobs : pool.values()) {
                             for (Iterator<Blob> it = blobs.iterator(); it.hasNext();) {
                                 Blob b = it.next();
                                 if (b.nTime < timeOfDeath) {
                                     it.remove();
-                                    invoice++;
-                                }else{
-                                    System.out.println(b.nTime+" >= "+timeOfDeath);
                                 }
                             }
                         }
-                    }
-                    if (invoice > 0) {
-                        System.out.println("Pool cleaner sends invoice for " + invoice + " messages.");
                     }
                     try {
                         Thread.sleep(Math.max(1000, expireSeconds.get() * 100));

@@ -2,13 +2,13 @@
  */
 package nl.infcomtec.advswing;
 
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -30,7 +30,7 @@ public class AEditorPane extends JEditorPane {
     public AEditorPane(String topicName, TextBlob.TextType type) {
         this.topicTx = topicName + "Tx";
         this.topicRx = topicName + "Rx";
-        this.pool = new BlobPool().withTopics(this.topicRx,this.topicTx);
+        this.pool = new BlobPool().withTopics(this.topicRx, this.topicTx);
         BlobPool.expireSeconds.set(1);
         this.pool.hireCleaner();
         this.dispType = type;
@@ -39,7 +39,7 @@ public class AEditorPane extends JEditorPane {
                 setContentType("text/html");
                 setEditable(false);
                 break;
-            case PLAIN: {
+            case MARKDOWN: {
                 setContentType("text/plain");
                 setEditable(true);
                 blob.feedTopic(topicTx, pool.getProducer(topicTx));
@@ -47,23 +47,26 @@ public class AEditorPane extends JEditorPane {
                 doc.addDocumentListener(new DocumentListener() {
                     @Override
                     public void insertUpdate(DocumentEvent e) {
-                        blob.setPlain(getText());
+                        blob.setMarkDown(getText());
                     }
 
                     @Override
                     public void removeUpdate(DocumentEvent e) {
-                        blob.setPlain(getText());
+                        blob.setMarkDown(getText());
                     }
 
                     @Override
                     public void changedUpdate(DocumentEvent e) {
-                        blob.setPlain(getText());
+                        blob.setMarkDown(getText());
                     }
                 });
             }
             break;
         }
-        // TODO need to update text on changes.
+    }
+    public AEditorPane withFont(Font font) {
+        super.setFont(font);
+        return this;
     }
 
     /**
@@ -72,7 +75,37 @@ public class AEditorPane extends JEditorPane {
      * @return the consumer.
      */
     public BlobPool.Consumer<TextBlob.TypedText> getConsumer() {
-        return pool.getConsumer(topicRx);
+        return pool.getConsumer(topicTx);
+    }
+
+    public Thread followField(final AEditorPane other) {
+        Thread ret = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                BlobPool.Consumer<TextBlob.TypedText> consumer = other.getConsumer();
+                while (true) {
+                    try {
+                        TextBlob.TypedText tt = consumer.call();
+                        if (null != tt) {
+                            blob.set(tt);
+                            switch (dispType) {
+                                case HTML:
+                                    setText(blob.getHTML());
+                                    break;
+                                case MARKDOWN:
+                                case PLAIN:
+                                    setText(blob.getPlain());
+                                    break;
+                            }
+                        }
+                    } catch (Exception ex) {
+                        Logger.getLogger(AEditorPane.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        });
+        ret.start();
+        return ret;
     }
 
     /**
@@ -89,33 +122,26 @@ public class AEditorPane extends JEditorPane {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 0.1;
+        gbc.weightx = 0.33;
         gbc.weighty = 0.1;
-        f.getContentPane().add(new JLabel("HTML"), gbc);
+        Font font=new Font("Arial", Font.PLAIN, 24);
+        f.getContentPane().add(new ALabel("HTML").withFont(font), gbc);
         gbc.gridx = 1;
-        f.getContentPane().add(new JLabel("MarkDown"), gbc);
+        f.getContentPane().add(new ALabel("MarkDown").withFont(font), gbc);
+        gbc.gridx = 2;
+        f.getContentPane().add(new ALabel("Plain").withFont(font), gbc);
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.BOTH;
-        gbc.weightx = 0.2;
         gbc.weighty = 0.9;
-        AEditorPane h, t;
-        f.getContentPane().add(new JScrollPane(h = new AEditorPane("h", TextBlob.TextType.HTML)), gbc);
+        AEditorPane h, t, c;
+        f.getContentPane().add(new JScrollPane(h = new AEditorPane("h", TextBlob.TextType.HTML).withFont(font)), gbc);
         gbc.gridx = 1;
-        f.getContentPane().add(new JScrollPane(t = new AEditorPane("t", TextBlob.TextType.PLAIN)), gbc);
+        f.getContentPane().add(new JScrollPane(t = new AEditorPane("t", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
+        gbc.gridx = 2;
+        f.getContentPane().add(new JScrollPane(c = new AEditorPane("c", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
+        h.followField(t);
+        c.followField(t);
         f.setVisible(true);
-        System.out.println(t.pool.listTopics());
-        BlobPool.Consumer<TextBlob.TypedText> consumer = t.pool.getConsumer("ttx");
-        while (true) {
-            try {
-                TextBlob.TypedText tt = consumer.call();
-                if (null != tt) {
-                    System.out.println(tt);
-                    h.setText(t.blob.getHTML());
-                }
-            } catch (Exception ex) {
-                Logger.getLogger(AEditorPane.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
     }
 }

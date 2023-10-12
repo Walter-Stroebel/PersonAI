@@ -19,16 +19,19 @@ public class TextBlob {
 
     private final StringBuilder asPlain;
     private final StringBuilder asHTML;
-    private TextType lastSet = TextType.PLAIN;
-    private boolean plainValid = true;
+    private TextType lastSet = TextType.MARKDOWN;
+    private boolean mdValid = true;
     private boolean htmlValid = true;
     public AtomicLong lastConversionNanos = new AtomicLong();
     public AtomicInteger version = new AtomicInteger(0);
     private final ConcurrentSkipListMap<String, BlobPool.Consumer> rxTopics = new ConcurrentSkipListMap<>();
     private final ConcurrentSkipListMap<String, BlobPool.Producer> txTopics = new ConcurrentSkipListMap<>();
+    private final StringBuilder asMarkDown;
+    private boolean plainValid = true;
 
     public TextBlob() {
         asPlain = new StringBuilder();
+        asMarkDown = new StringBuilder();
         asHTML = new StringBuilder();
     }
 
@@ -41,13 +44,7 @@ public class TextBlob {
         if (!plainValid) {
             long nanos = System.nanoTime();
             asPlain.setLength(0);
-            switch (lastSet) {
-                case HTML:
-                    asPlain.append(new PandocConverter().convertHTMLToMarkdown(asHTML.toString()));
-                    break;
-                case PLAIN:
-                    break;
-            }
+            asPlain.append(new PandocConverter().convertMarkdownToText(getMarkDown()));
             plainValid = true;
             lastConversionNanos.set(System.nanoTime() - nanos);
         }
@@ -58,28 +55,34 @@ public class TextBlob {
         if (!htmlValid) {
             long nanos = System.nanoTime();
             asHTML.setLength(0);
-            switch (lastSet) {
-                case HTML:
-                    break;
-                case PLAIN:
-                    asHTML.append(new PandocConverter().convertMarkdownToHTML(getPlain()));
-                    break;
-            }
+            asHTML.append(new PandocConverter().convertMarkdownToHTML(getMarkDown()));
             htmlValid = true;
             lastConversionNanos.set(System.nanoTime() - nanos);
         }
         return asHTML.toString();
     }
 
-    public synchronized void setPlain(String text) {
+    public synchronized String getMarkDown() {
+        if (!mdValid) {
+            long nanos = System.nanoTime();
+            asMarkDown.setLength(0);
+            asMarkDown.append(new PandocConverter().convertHTMLToMarkdown(asHTML.toString()));
+            mdValid = true;
+            lastConversionNanos.set(System.nanoTime() - nanos);
+        }
+        return asMarkDown.toString();
+    }
+
+    public synchronized void setMarkDown(String text) {
         version.incrementAndGet();
-        asPlain.setLength(0);
-        asPlain.append(text);
-        lastSet = TextType.PLAIN;
-        plainValid = true;
+        asMarkDown.setLength(0);
+        asMarkDown.append(text);
+        lastSet = TextType.MARKDOWN;
+        mdValid = true;
         htmlValid = false;
+        plainValid = false;
         if (!txTopics.isEmpty()) {
-            tellAll(new TypedText(TextType.PLAIN, text));
+            tellAll(new TypedText(TextType.MARKDOWN, text));
         }
     }
 
@@ -89,6 +92,7 @@ public class TextBlob {
         asHTML.append(text);
         lastSet = TextType.HTML;
         htmlValid = true;
+        mdValid = false;
         plainValid = false;
         if (!txTopics.isEmpty()) {
             tellAll(new TypedText(TextType.HTML, text));
@@ -96,27 +100,37 @@ public class TextBlob {
     }
 
     private void tellAll(TypedText tt) {
-        for ( Map.Entry<String, BlobPool.Producer> ent: txTopics.entrySet()) {
+        for (Map.Entry<String, BlobPool.Producer> ent : txTopics.entrySet()) {
             ent.getValue().send(tt);
         }
     }
 
+    /**
+     * Set from typed text.
+     * <p>
+     * <b>Note</b> that there is no direct support to set plain text -- it is
+     * handled as MarkDown.
+     * </p>
+     *
+     * @param tt
+     */
     public void set(TypedText tt) {
         switch (tt.type) {
             case HTML:
                 setHTML(tt.text);
                 break;
+            case MARKDOWN:
             case PLAIN:
-                setPlain(tt.text);
+                setMarkDown(tt.text);
                 break;
         }
     }
 
-    public void feedTopic(String topic,final BlobPool.Producer<TypedText> prod) {
-        txTopics.put(topic,prod);
+    public void feedTopic(String topic, final BlobPool.Producer<TypedText> prod) {
+        txTopics.put(topic, prod);
     }
 
-    public void followTopic(String topic,final BlobPool.Consumer<TypedText> cons) {
+    public void followTopic(String topic, final BlobPool.Consumer<TypedText> cons) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -162,9 +176,9 @@ public class TextBlob {
     }
 
     /**
-     * Simple text type. Note that plain == MarkDown.
+     * Simple text type.
      */
     public enum TextType {
-        PLAIN, HTML
+        MARKDOWN, HTML, PLAIN
     }
 }
