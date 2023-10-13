@@ -17,8 +17,9 @@ import nl.infcomtec.pubsub.BlobPool;
 import nl.infcomtec.pubsub.TextBlob;
 
 /**
+ * A sharable JEditorPane.
  *
- * @author walter
+ * @author Walter Stroebel.
  */
 public class AEditorPane extends JEditorPane {
 
@@ -27,6 +28,13 @@ public class AEditorPane extends JEditorPane {
     private String topicTx;
     private String topicRx;
 
+    /**
+     * Keeps the text in a TextBlob.
+     *
+     * @param pool for creating the TextBlob.
+     * @param topicName Topic in the pool.
+     * @param type HTML, MarkDown or Plain.
+     */
     public AEditorPane(BlobPool pool, String topicName, TextBlob.TextType type) {
         this.topicTx = topicName + "Tx";
         this.topicRx = topicName + "Rx";
@@ -79,6 +87,12 @@ public class AEditorPane extends JEditorPane {
         return blob.getConsumer(topicTx);
     }
 
+    /**
+     * Keep this pane showing the same text as another pane.
+     *
+     * @param other Pane to copy.
+     * @return For killing.
+     */
     public Thread followField(final AEditorPane other) {
         Thread ret = new Thread(new Runnable() {
             @Override
