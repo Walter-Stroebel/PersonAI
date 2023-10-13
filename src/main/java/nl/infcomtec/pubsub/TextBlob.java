@@ -1,6 +1,5 @@
 package nl.infcomtec.pubsub;
 
-import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -142,7 +141,7 @@ public class TextBlob {
             public void run() {
                 while (true) {
                     try {
-                        Serializable messageFromTopic = cons.call();
+                        Object messageFromTopic = cons.call();
                         if (null != messageFromTopic) {
                             if (messageFromTopic instanceof TypedText) {
                                 set((TypedText) messageFromTopic);
@@ -188,7 +187,7 @@ public class TextBlob {
      * For Pub-Sub.
      *
      */
-    public static class TypedText implements Serializable {
+    public static class TypedText {
 
         public final TextType type;
         public final String text;

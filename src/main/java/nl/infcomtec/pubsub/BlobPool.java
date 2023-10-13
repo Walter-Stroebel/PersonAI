@@ -1,11 +1,5 @@
 package nl.infcomtec.pubsub;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,7 +15,7 @@ import java.util.logging.Logger;
  *
  * @author walter
  */
-public class BlobPool implements Serialization {
+public class BlobPool {
 
     public final static long millieNanos = 1000000L;
     public final static long startNanos = System.currentTimeMillis() * millieNanos;
@@ -74,33 +68,6 @@ public class BlobPool implements Serialization {
      * This is where the blobs live. Or not.
      */
     private final ConcurrentSkipListMap<String, List<Blob>> pool = new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER);
-    private final Serialization ser;
-
-    /**
-     * Uses DefaultSerialization.
-     */
-    public BlobPool() {
-        this.ser = new DefaultSerialization();
-    }
-
-    /**
-     * Uses specified serialization.
-     *
-     * @param ser
-     */
-    public BlobPool(Serialization ser) {
-        this.ser = ser;
-    }
-
-    @Override
-    public Serializable deserialize(byte[] data) {
-        return ser.deserialize(data);
-    }
-
-    @Override
-    public byte[] serialize(Serializable content) {
-        return ser.serialize(content);
-    }
 
     /**
      * Register a new topic.
@@ -409,54 +376,6 @@ public class BlobPool implements Serialization {
     }
 
     /**
-     * Should handle anything Serializable. Optimized for CharSequence.
-     */
-    private static class DefaultSerialization implements Serialization {
-
-        @Override
-        public Serializable deserialize(byte[] data) {
-            try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
-                int enc = bais.read();
-                try (ObjectInputStream ois = new ObjectInputStream(bais)) {
-                    switch (enc) {
-                        case 1:
-                            return ois.readUTF();
-                    }
-                    return (Serializable) ois.readObject();
-                }
-            } catch (Exception ex) {
-                Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            return null;
-        }
-
-        @Override
-        public byte[] serialize(Serializable content) {
-            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                boolean isString = (content instanceof CharSequence);
-                if (isString) {
-                    baos.write(1);
-                } else {
-                    baos.write(0);
-                }
-                try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                    if (isString) {
-                        oos.writeUTF(((CharSequence) content).toString());
-                    } else {
-                        oos.writeObject(content);
-                    }
-                    oos.flush();
-                }
-                baos.flush();
-                return baos.toByteArray();
-            } catch (IOException ex) {
-                Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            return null;
-        }
-    }
-
-    /**
      * Result of fetching a blob.
      */
     public static class Result {
@@ -476,9 +395,9 @@ public class BlobPool implements Serialization {
     }
 
     /**
-     * Returns a Serializable from a topic.
+     * Returns an object from a topic.
      */
-    public static class Consumer implements Callable<Serializable> {
+    public static class Consumer implements Callable {
 
         private final BlobPool pool;
         private final String topic;
@@ -509,12 +428,12 @@ public class BlobPool implements Serialization {
         }
 
         @Override
-        public Serializable call() throws Exception {
+        public Object call() throws Exception {
             while (true) {
                 Result mRes = pool.waitForMessage(topic, nTime, 1000);
                 if (mRes.found == Results.NewMessage) {
                     nTime = mRes.blob.nTime;
-                    return mRes.blob.getData(pool);
+                    return mRes.blob.getContent();
                 }
                 if (mRes.found == Results.NoSuchTopic) {
                     throw new Exception("No such topic");
@@ -524,7 +443,7 @@ public class BlobPool implements Serialization {
     }
 
     /**
-     * Sends Serializable objects to a topic.
+     * Sends an object to a topic.
      */
     public static class Producer {
 
@@ -536,8 +455,8 @@ public class BlobPool implements Serialization {
             this.topic = topic;
         }
 
-        public void send(Serializable obj) {
-            pool.submit(new Blob(topic, pool, obj));
+        public void send(Object obj) {
+            pool.submit(new Blob(topic, obj));
         }
     }
 

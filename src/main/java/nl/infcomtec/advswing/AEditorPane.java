@@ -5,7 +5,6 @@ package nl.infcomtec.advswing;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.io.Serializable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JEditorPane;
@@ -87,7 +86,7 @@ public class AEditorPane extends JEditorPane {
                 BlobPool.Consumer consumer = other.getConsumer();
                 while (true) {
                     try {
-                        Serializable tt = consumer.call();
+                        Object tt = consumer.call();
                         if (null != tt) {
                             if (tt instanceof TextBlob.TypedText) {
                                 blob.set((TextBlob.TypedText) tt);
