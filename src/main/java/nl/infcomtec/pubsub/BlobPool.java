@@ -21,7 +21,7 @@ import java.util.logging.Logger;
  *
  * @author walter
  */
-public class BlobPool {
+public class BlobPool implements Serialization {
 
     public final static long millieNanos = 1000000L;
     public final static long startNanos = System.currentTimeMillis() * millieNanos;
@@ -67,51 +67,6 @@ public class BlobPool {
     }
 
     /**
-     * Utility function.
-     *
-     * @param content Anything.
-     * @return Bytes.
-     */
-    public static byte[] serialize(Serializable content) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            boolean isString = (content instanceof CharSequence);
-            if (isString) {
-                baos.write(1);
-            } else {
-                baos.write(0);
-            }
-            try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-                if (isString) {
-                    oos.writeUTF(((CharSequence) content).toString());
-                } else {
-                    oos.writeObject(content);
-                }
-                oos.flush();
-            }
-            baos.flush();
-            return baos.toByteArray();
-        } catch (IOException ex) {
-            Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return null;
-    }
-
-    public static Serializable deserialize(byte[] data) {
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
-            int enc = bais.read();
-            try (ObjectInputStream ois = new ObjectInputStream(bais)) {
-                switch (enc) {
-                    case 1:
-                        return ois.readUTF();
-                }
-                return (Serializable) ois.readObject();
-            }
-        } catch (Exception ex) {
-            Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return null;
-    }
-    /**
      * Caller protection, lets keep things reasonable.
      */
     private final long MAX_WAIT_TIME = 10000L;
@@ -119,6 +74,33 @@ public class BlobPool {
      * This is where the blobs live. Or not.
      */
     private final ConcurrentSkipListMap<String, List<Blob>> pool = new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER);
+    private final Serialization ser;
+
+    /**
+     * Uses DefaultSerialization.
+     */
+    public BlobPool() {
+        this.ser = new DefaultSerialization();
+    }
+
+    /**
+     * Uses specified serialization.
+     *
+     * @param ser
+     */
+    public BlobPool(Serialization ser) {
+        this.ser = ser;
+    }
+
+    @Override
+    public Serializable deserialize(byte[] data) {
+        return ser.deserialize(data);
+    }
+
+    @Override
+    public byte[] serialize(Serializable content) {
+        return ser.serialize(content);
+    }
 
     /**
      * Register a new topic.
@@ -407,6 +389,74 @@ public class BlobPool {
     }
 
     /**
+     * Get a consumer.
+     *
+     * @param topic
+     * @return
+     */
+    public Consumer getConsumer(String topic) {
+        return new Consumer(this, topic);
+    }
+
+    /**
+     * Get a producer.
+     *
+     * @param topic
+     * @return
+     */
+    public Producer getProducer(String topic) {
+        return new Producer(this, topic);
+    }
+
+    /**
+     * Should handle anything Serializable. Optimized for CharSequence.
+     */
+    private static class DefaultSerialization implements Serialization {
+
+        @Override
+        public Serializable deserialize(byte[] data) {
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(data)) {
+                int enc = bais.read();
+                try (ObjectInputStream ois = new ObjectInputStream(bais)) {
+                    switch (enc) {
+                        case 1:
+                            return ois.readUTF();
+                    }
+                    return (Serializable) ois.readObject();
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return null;
+        }
+
+        @Override
+        public byte[] serialize(Serializable content) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                boolean isString = (content instanceof CharSequence);
+                if (isString) {
+                    baos.write(1);
+                } else {
+                    baos.write(0);
+                }
+                try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+                    if (isString) {
+                        oos.writeUTF(((CharSequence) content).toString());
+                    } else {
+                        oos.writeObject(content);
+                    }
+                    oos.flush();
+                }
+                baos.flush();
+                return baos.toByteArray();
+            } catch (IOException ex) {
+                Logger.getLogger(BlobPool.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return null;
+        }
+    }
+
+    /**
      * Result of fetching a blob.
      */
     public static class Result {
@@ -425,18 +475,10 @@ public class BlobPool {
         }
     }
 
-    public Consumer getConsumer(String topic) {
-        return new Consumer(this, topic);
-    }
-
-    public Producer getProducer(String topic) {
-        return new Producer(this, topic);
-    }
-
     /**
-     * Returns a String from a topic
+     * Returns a Serializable from a topic.
      */
-    public static class Consumer<T extends Serializable> implements Callable<T> {
+    public static class Consumer implements Callable<Serializable> {
 
         private final BlobPool pool;
         private final String topic;
@@ -467,12 +509,12 @@ public class BlobPool {
         }
 
         @Override
-        public T call() throws Exception {
+        public Serializable call() throws Exception {
             while (true) {
                 Result mRes = pool.waitForMessage(topic, nTime, 1000);
                 if (mRes.found == Results.NewMessage) {
                     nTime = mRes.blob.nTime;
-                    return (T) mRes.blob.getData();
+                    return mRes.blob.getData(pool);
                 }
                 if (mRes.found == Results.NoSuchTopic) {
                     throw new Exception("No such topic");
@@ -482,9 +524,9 @@ public class BlobPool {
     }
 
     /**
-     * Sends String objects to a topic.
+     * Sends Serializable objects to a topic.
      */
-    public static class Producer<T extends Serializable> {
+    public static class Producer {
 
         private final BlobPool pool;
         private final String topic;
@@ -494,8 +536,8 @@ public class BlobPool {
             this.topic = topic;
         }
 
-        public void send(T obj) {
-            pool.submit(new Blob(topic, obj));
+        public void send(Serializable obj) {
+            pool.submit(new Blob(topic, pool, obj));
         }
     }
 

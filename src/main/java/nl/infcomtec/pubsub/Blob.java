@@ -3,6 +3,7 @@ package nl.infcomtec.pubsub;
 import java.io.Serializable;
 
 /**
+ * A truly generic blob of data.
  *
  * @author walter
  */
@@ -13,25 +14,30 @@ public class Blob {
     public final byte[] data;
 
     /**
-     * Create a message to send.
-     *
-     * Note: check logging if data is null: most likely your object failed to
-     * serialize.
+     * Create a blob with some content.
      *
      * @param topic As returned from BlobPool createTopic().
-     * @param content Object to send.
+     * @param ser Serialization methods.
+     * @param content Object to encapsulate.
      */
-    public Blob(String topic, Serializable content) {
+    public Blob(String topic, Serialization ser, Serializable content) {
         this.topic = topic;
         this.nTime = BlobPool.getUniqueTime();
-        this.data = BlobPool.serialize(content);
+        this.data = ser.serialize(content);
     }
 
     @Override
     public String toString() {
         return "Blob{topic=" + topic + ", nTime=" + nTime + ", data=" + data.length + '}';
     }
-    public Serializable getData(){
-        return BlobPool.deserialize(data);
+
+    /**
+     * Get the message from this blob.
+     *
+     * @param ser Serialization methods.
+     * @return The original content.
+     */
+    public Serializable getData(Serialization ser) {
+        return ser.deserialize(data);
     }
 }

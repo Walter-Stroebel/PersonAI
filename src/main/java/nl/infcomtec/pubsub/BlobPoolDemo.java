@@ -39,7 +39,7 @@ public class BlobPoolDemo {
             public void run() {
                 while (true) {
                     sleep(rnd.nextInt(1000));
-                    bp.submit(new Blob(ironOre, ironOre));
+                    bp.submit(new Blob(ironOre, bp, ironOre));
                     sleep(rnd.nextInt(1000));
                 }
             }
@@ -49,7 +49,7 @@ public class BlobPoolDemo {
             public void run() {
                 while (true) {
                     sleep(rnd.nextInt(1000));
-                    bp.submit(new Blob(copperOre, 2));
+                    bp.submit(new Blob(copperOre, bp,2));
                     sleep(rnd.nextInt(1000));
                 }
             }
@@ -62,7 +62,7 @@ public class BlobPoolDemo {
                     BlobPool.Result wait = bp.waitForMessage(ironOre, t, 1000);
                     if (wait.found == BlobPool.Results.NewMessage) {
                         sleep(rnd.nextInt(1000));
-                        bp.submit(new Blob(ironIngot, "ingot"));
+                        bp.submit(new Blob(ironIngot, bp,"ingot"));
                         sleep(rnd.nextInt(1000));
                         t = wait.blob.nTime;
                     } else {
@@ -79,7 +79,7 @@ public class BlobPoolDemo {
                     BlobPool.Result wait = bp.waitForMessage(copperOre, t, 1000);
                     if (wait.found == BlobPool.Results.NewMessage) {
                         sleep(rnd.nextInt(1000));
-                        bp.submit(new Blob(copperIngot, 2));
+                        bp.submit(new Blob(copperIngot, bp,2));
                         sleep(rnd.nextInt(1000));
                         t = wait.blob.nTime;
                     } else {
@@ -102,7 +102,7 @@ public class BlobPoolDemo {
                         System.err.println("Coil maker did not get any copper ingot " + wait);
                         continue;
                     }
-                    copper+=(Integer) wait.blob.getData();
+                    copper+=(Integer) wait.blob.getData(bp);
                     wait = bp.waitForMessage(ironIngot, t2, 1000);
                     if (wait.found == BlobPool.Results.NewMessage) {
                         t2 = wait.blob.nTime;
@@ -113,7 +113,7 @@ public class BlobPoolDemo {
                     if(copper>=3){
                         copper-=3;
                         sleep(rnd.nextInt(100));
-                        bp.submit(new Blob(coil, 1));
+                        bp.submit(new Blob(coil, bp,1));
                         System.out.println("Coil produced");
                     }else{
                         System.err.println("Coil maker needs more copper ingots: "+copper+" of 3");

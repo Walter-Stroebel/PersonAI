@@ -1,4 +1,4 @@
-package nl.infcomtec.advswing;
+package nl.infcomtec.pubsub;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import nl.infcomtec.pubsub.BlobPool;
 import nl.infcomtec.tools.PandocConverter;
 
 /**
@@ -28,15 +27,22 @@ public class TextBlob {
     private final ConcurrentSkipListMap<String, BlobPool.Producer> txTopics = new ConcurrentSkipListMap<>();
     private final StringBuilder asMarkDown;
     private boolean plainValid = true;
+    private final BlobPool pool;
 
-    public TextBlob() {
+    public TextBlob(BlobPool pool) {
+        this.pool = pool;
         asPlain = new StringBuilder();
         asMarkDown = new StringBuilder();
         asHTML = new StringBuilder();
     }
 
-    public TextBlob withConsumer(BlobPool pool, String topic) {
+    public TextBlob withConsumer(String topic) {
         rxTopics.put(topic, pool.getConsumer(topic));
+        return this;
+    }
+
+    public TextBlob withProducer(String topic) {
+        txTopics.put(topic, pool.getProducer(topic));
         return this;
     }
 
@@ -126,20 +132,27 @@ public class TextBlob {
         }
     }
 
-    public void feedTopic(String topic, final BlobPool.Producer<TypedText> prod) {
+    public void feedTopic(String topic, final BlobPool.Producer prod) {
         txTopics.put(topic, prod);
     }
 
-    public void followTopic(String topic, final BlobPool.Consumer<TypedText> cons) {
+    public void followTopic(final String topic, final BlobPool.Consumer cons) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
                     try {
-                        TypedText messageFromTopic = cons.call();
+                        Serializable messageFromTopic = cons.call();
                         if (null != messageFromTopic) {
-                            set(messageFromTopic);
+                            if (messageFromTopic instanceof TypedText) {
+                                set((TypedText) messageFromTopic);
+                            } else {
+                                Logger.getLogger(TextBlob.class.getName()).log(Level.WARNING,
+                                        "Not a TypedText: {0}", messageFromTopic.getClass().getName());
+                            }
                         } else {
+                            Logger.getLogger(TextBlob.class.getName()).log(Level.INFO,
+                                    "Lost connection to topic: {0}", topic);
                             break;
                         }
                     } catch (Exception ex) {
@@ -149,6 +162,26 @@ public class TextBlob {
                 }
             }
         }).start();
+    }
+
+    /**
+     * Defer to the pool.
+     *
+     * @param topic
+     * @return
+     */
+    public BlobPool.Consumer getConsumer(String topic) {
+        return pool.getConsumer(topic);
+    }
+
+    /**
+     * Defer to the pool.
+     *
+     * @param topic
+     * @return
+     */
+    public BlobPool.Producer getProducer(String topic) {
+        return pool.getProducer(topic);
     }
 
     /**

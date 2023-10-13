@@ -5,6 +5,7 @@ package nl.infcomtec.advswing;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.io.Serializable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JEditorPane;
@@ -14,6 +15,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.Document;
 import nl.infcomtec.pubsub.BlobPool;
+import nl.infcomtec.pubsub.TextBlob;
 
 /**
  *
@@ -21,18 +23,17 @@ import nl.infcomtec.pubsub.BlobPool;
  */
 public class AEditorPane extends JEditorPane {
 
-    private final TextBlob blob = new TextBlob();
+    private final TextBlob blob;
     private final TextBlob.TextType dispType;
     private String topicTx;
     private String topicRx;
-    private final BlobPool pool;
 
-    public AEditorPane(String topicName, TextBlob.TextType type) {
+    public AEditorPane(BlobPool pool, String topicName, TextBlob.TextType type) {
         this.topicTx = topicName + "Tx";
         this.topicRx = topicName + "Rx";
-        this.pool = new BlobPool().withTopics(this.topicRx, this.topicTx);
-        BlobPool.expireSeconds.set(1);
-        this.pool.hireCleaner();
+        blob = new TextBlob(pool);
+        pool.createTopic(topicTx);
+        pool.createTopic(topicRx);
         this.dispType = type;
         switch (dispType) {
             case HTML:
@@ -64,6 +65,7 @@ public class AEditorPane extends JEditorPane {
             break;
         }
     }
+
     public AEditorPane withFont(Font font) {
         super.setFont(font);
         return this;
@@ -74,28 +76,33 @@ public class AEditorPane extends JEditorPane {
      *
      * @return the consumer.
      */
-    public BlobPool.Consumer<TextBlob.TypedText> getConsumer() {
-        return pool.getConsumer(topicTx);
+    public BlobPool.Consumer getConsumer() {
+        return blob.getConsumer(topicTx);
     }
 
     public Thread followField(final AEditorPane other) {
         Thread ret = new Thread(new Runnable() {
             @Override
             public void run() {
-                BlobPool.Consumer<TextBlob.TypedText> consumer = other.getConsumer();
+                BlobPool.Consumer consumer = other.getConsumer();
                 while (true) {
                     try {
-                        TextBlob.TypedText tt = consumer.call();
+                        Serializable tt = consumer.call();
                         if (null != tt) {
-                            blob.set(tt);
-                            switch (dispType) {
-                                case HTML:
-                                    setText(blob.getHTML());
-                                    break;
-                                case MARKDOWN:
-                                case PLAIN:
-                                    setText(blob.getPlain());
-                                    break;
+                            if (tt instanceof TextBlob.TypedText) {
+                                blob.set((TextBlob.TypedText) tt);
+                                switch (dispType) {
+                                    case HTML:
+                                        setText(blob.getHTML());
+                                        break;
+                                    case MARKDOWN:
+                                    case PLAIN:
+                                        setText(blob.getPlain());
+                                        break;
+                                }
+                            } else {
+                                Logger.getLogger(AEditorPane.class.getName()).log(Level.WARNING,
+                                        "Not a TypedText: {0}", tt.getClass().getName());
                             }
                         }
                     } catch (Exception ex) {
@@ -122,24 +129,24 @@ public class AEditorPane extends JEditorPane {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 0.33;
-        gbc.weighty = 0.1;
-        Font font=new Font("Arial", Font.PLAIN, 24);
+        gbc.weightx = 1;
+        gbc.weighty = 1;
+        Font font = new Font("Arial", Font.PLAIN, 24);
         f.getContentPane().add(new ALabel("HTML").withFont(font), gbc);
-        gbc.gridx = 1;
-        f.getContentPane().add(new ALabel("MarkDown").withFont(font), gbc);
-        gbc.gridx = 2;
-        f.getContentPane().add(new ALabel("Plain").withFont(font), gbc);
-        gbc.gridx = 0;
         gbc.gridy = 1;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.weighty = 0.9;
-        AEditorPane h, t, c;
-        f.getContentPane().add(new JScrollPane(h = new AEditorPane("h", TextBlob.TextType.HTML).withFont(font)), gbc);
+        f.getContentPane().add(new ALabel("MarkDown").withFont(font), gbc);
+        gbc.gridy = 2;
+        f.getContentPane().add(new ALabel("Plain").withFont(font), gbc);
         gbc.gridx = 1;
-        f.getContentPane().add(new JScrollPane(t = new AEditorPane("t", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
-        gbc.gridx = 2;
-        f.getContentPane().add(new JScrollPane(c = new AEditorPane("c", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.BOTH;
+        AEditorPane h, t, c;
+        BlobPool pool = new BlobPool();
+        f.getContentPane().add(new JScrollPane(h = new AEditorPane(pool, "h", TextBlob.TextType.HTML).withFont(font)), gbc);
+        gbc.gridy = 1;
+        f.getContentPane().add(new JScrollPane(t = new AEditorPane(pool, "t", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
+        gbc.gridy = 2;
+        f.getContentPane().add(new JScrollPane(c = new AEditorPane(pool, "c", TextBlob.TextType.MARKDOWN).withFont(font)), gbc);
         h.followField(t);
         c.followField(t);
         f.setVisible(true);
