@@ -2,8 +2,6 @@ package nl.infcomtec.graphs;
 
 import com.google.gson.Gson;
 import java.awt.Color;
-import java.awt.Point;
-import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -525,9 +523,8 @@ public class ClGraph {
         }
     }
 
-    public ClNode getNode(MouseEvent e) {
+    public ClNode getNode(Point2D p) {
         String nId = "";
-        Point p = e.getPoint();
         Double d = null;
         for (Map.Entry<String, Point2D> c : nodeCenters.entrySet()) {
             if (null == d || c.getValue().distance(p) < d) {

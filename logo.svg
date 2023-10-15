@@ -1,17 +1,17 @@
 <svg width="300" height="140" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect x="0" y="0" width="400" height="150" fill="#F2F2F2"/>
+    <!-- Background -->
+    <rect x="0" y="0" width="400" height="150" fill="#F2F2F2"/>
 
-  <!-- Text: "Person" -->
-  <text x="10" y="50" font-family="Verdana" font-size="48" fill="#4A90E2">Person</text>
+    <!-- Text: "Person" -->
+    <text x="10" y="50" font-family="Verdana" font-size="48" fill="#4A90E2">Person</text>
 
-  <!-- Text: "+" -->
-  <text x="175" y="35" font-family="Verdana" font-size="24" fill="#E94E77">+</text>
+    <!-- Text: "+" -->
+    <text x="175" y="35" font-family="Verdana" font-size="24" fill="#E94E77">+</text>
 
-  <!-- Text: "AI" -->
-  <text x="200" y="50" font-family="Verdana" font-size="48" fill="#7E8C8D">AI</text>
+    <!-- Text: "AI" -->
+    <text x="200" y="50" font-family="Verdana" font-size="48" fill="#7E8C8D">AI</text>
 
-  <!-- Text: "= Personal AI" -->
-  <text x="50" y="100" font-family="Verdana" font-size="24" fill="#7E8C8D">= Personal AI</text>
+    <!-- Text: "= Personal AI" -->
+    <text x="50" y="100" font-family="Verdana" font-size="24" fill="#7E8C8D">= Personal AI</text>
 </svg>
 

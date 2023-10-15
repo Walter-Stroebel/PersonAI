@@ -149,7 +149,7 @@ public abstract class ToolManager implements Runnable {
             Thread stdoutThread = new Thread() {
                 @Override
                 public void run() {
-                    try ( InputStream is = p.getInputStream()) {
+                    try (InputStream is = p.getInputStream()) {
                         byte[] buffer = new byte[1024];
                         int read;
                         while ((read = is.read(buffer)) != -1) {
@@ -165,7 +165,7 @@ public abstract class ToolManager implements Runnable {
             Thread stderrThread = new Thread() {
                 @Override
                 public void run() {
-                    try ( BufferedReader br = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
                         String line;
                         while ((line = br.readLine()) != null) {
                             System.err.println(line);
@@ -186,7 +186,7 @@ public abstract class ToolManager implements Runnable {
                 new Thread() {
                     @Override
                     public void run() {
-                        try ( OutputStream os = p.getOutputStream()) {
+                        try (OutputStream os = p.getOutputStream()) {
                             os.write(inBytes);
                             p.getOutputStream().close();
                         } catch (IOException e) {

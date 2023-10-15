@@ -10,6 +10,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -103,6 +104,12 @@ public class ImageViewer {
         imgObj = new ImageObject(img);
     }
 
+    /**
+     * Often images have overly bright or dark areas. This permits to have a
+     * lighter or darker view.
+     *
+     * @return this for chaining.
+     */
     public synchronized ImageViewer addShadowView() {
         ButtonGroup bg = new ButtonGroup();
         addChoice(bg, new AbstractAction("Dark") {
@@ -239,6 +246,14 @@ public class ImageViewer {
         double scale = 1;
         private BufferedImage dispImage = null;
 
+        private Point pixelMouse(MouseEvent e) {
+            int ax = e.getX() - ofsX;
+            int ay = e.getY() - ofsY;
+            ax = (int) Math.round(ax / scale);
+            ay = (int) Math.round(ay / scale);
+            return new Point(ax, ay);
+        }
+
         public JPanelImpl() {
             MouseAdapter ma = new MouseAdapter() {
                 private int lastX, lastY;
@@ -246,7 +261,7 @@ public class ImageViewer {
                 @Override
                 public void mousePressed(MouseEvent e) {
                     if (SwingUtilities.isRightMouseButton(e)) {
-                        imgObj.forwardMouse(ImageObject.MouseEvents.pressed, e);
+                        imgObj.forwardMouse(ImageObject.MouseEvents.pressed_right, pixelMouse(e));
                     } else {
                         lastX = e.getX();
                         lastY = e.getY();
@@ -255,18 +270,26 @@ public class ImageViewer {
 
                 @Override
                 public void mouseReleased(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.released, e);
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.released_right, pixelMouse(e));
+                    } else {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.released_left, pixelMouse(e));
+                    }
                 }
 
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    imgObj.forwardMouse(ImageObject.MouseEvents.clicked, e);
+                    if (SwingUtilities.isRightMouseButton(e)) {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_right, pixelMouse(e));
+                    } else {
+                        imgObj.forwardMouse(ImageObject.MouseEvents.clicked_left, pixelMouse(e));
+                    }
                 }
 
                 @Override
                 public void mouseDragged(MouseEvent e) {
                     if (SwingUtilities.isRightMouseButton(e)) {
-                        imgObj.forwardMouse(ImageObject.MouseEvents.dragged, e);
+                        imgObj.forwardMouse(ImageObject.MouseEvents.dragged, pixelMouse(e));
                     } else {
                         ofsX += e.getX() - lastX;
                         ofsY += e.getY() - lastY;

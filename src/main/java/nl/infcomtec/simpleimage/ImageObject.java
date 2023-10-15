@@ -3,7 +3,6 @@ package nl.infcomtec.simpleimage;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
@@ -63,12 +62,12 @@ public class ImageObject extends Image {
     }
 
     public enum MouseEvents {
-        clicked, dragged, moved, pressed, released
+        clicked_left, clicked_right, dragged, moved, pressed_left, released_left, pressed_right, released_right
     };
 
-    public synchronized void forwardMouse(MouseEvents ev, MouseEvent e) {
+    public synchronized void forwardMouse(MouseEvents ev, Point2D p) {
         for (ImageObjectListener listener : listeners) {
-            listener.mouseEvent(this, ev, e);
+            listener.mouseEvent(this, ev, p);
         }
 
     }
@@ -198,7 +197,7 @@ public class ImageObject extends Image {
             // default is no action
         }
 
-        public void mouseEvent(ImageObject imgObj, MouseEvents ev, MouseEvent e) {
+        public void mouseEvent(ImageObject imgObj, MouseEvents ev, Point2D p) {
             // default ignore
         }
     }

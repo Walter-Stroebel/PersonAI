@@ -21,13 +21,13 @@ public class Instructions {
 
     public static Instructions load(File file, Gson gson) {
         if (file.exists()) {
-            try ( FileReader fr = new FileReader(file)) {
+            try (FileReader fr = new FileReader(file)) {
                 return gson.fromJson(fr, Instructions.class);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         } else {
-            try ( InputStreamReader isr = new InputStreamReader(Instructions.class.getResourceAsStream("/" + PersonAI.INS_FILENAME))) {
+            try (InputStreamReader isr = new InputStreamReader(Instructions.class.getResourceAsStream("/" + PersonAI.INS_FILENAME))) {
                 Instructions ret = gson.fromJson(isr, Instructions.class);
                 ret.save(file, gson);
                 return ret;
@@ -38,7 +38,7 @@ public class Instructions {
     }
 
     public void save(File file, Gson gson) throws IOException {
-        try ( FileWriter fw = new FileWriter(file)) {
+        try (FileWriter fw = new FileWriter(file)) {
             gson.toJson(this, fw);
             fw.write(System.lineSeparator());
         }

@@ -16,7 +16,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
@@ -112,7 +112,7 @@ public class PersonAI {
             System.exit(1);
         }
         if (CONFIG_FILE.exists()) {
-            try ( FileReader fr = new FileReader(CONFIG_FILE)) {
+            try (FileReader fr = new FileReader(CONFIG_FILE)) {
                 config = gson.fromJson(fr, Config.class);
             } catch (Exception any) {
                 config = null;
@@ -138,7 +138,7 @@ public class PersonAI {
     }
 
     public static void saveConfig() {
-        try ( FileWriter fw = new FileWriter(CONFIG_FILE)) {
+        try (FileWriter fw = new FileWriter(CONFIG_FILE)) {
             gson.toJson(config, fw);
             fw.write(EOLN);
         } catch (IOException ex) {
@@ -149,7 +149,7 @@ public class PersonAI {
 
     public static String getResource(String name) {
         String path = name.startsWith("/") ? name : "/" + name;
-        try ( BufferedReader bfr = new BufferedReader(new InputStreamReader(PersonAI.class.getResourceAsStream(path)))) {
+        try (BufferedReader bfr = new BufferedReader(new InputStreamReader(PersonAI.class.getResourceAsStream(path)))) {
             StringBuilder sb = new StringBuilder();
             for (String s = bfr.readLine(); s != null; s = bfr.readLine()) {
                 sb.append(s).append(EOLN);
@@ -767,18 +767,26 @@ public class PersonAI {
         }
 
         @Override
-        public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, MouseEvent e) {
+        public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, Point2D e) {
             ClNode node = convo.getNode(e);
-            if (ev == ImageObject.MouseEvents.clicked && SwingUtilities.isLeftMouseButton(e)) {
-                // TODO convo.selectNode(node, dotViewer);
-                jumpTo(node);
-            } else if (ev == ImageObject.MouseEvents.pressed && SwingUtilities.isRightMouseButton(e)) {
-                System.out.println(e + " " + node);
-                nwEdge = node;
-            } else if (ev == ImageObject.MouseEvents.released && SwingUtilities.isRightMouseButton(e)) {
-                System.out.println(e + " " + node);
-                convo.addEdge(nwEdge, node, "mouse");
-                rebuild();
+            if (null != ev) {
+                switch (ev) {
+                    case clicked_left:
+                        // TODO convo.selectNode(node, dotViewer);
+                        jumpTo(node);
+                        break;
+                    case pressed_left:
+                        System.out.println(e + " " + node);
+                        nwEdge = node;
+                        break;
+                    case released_left:
+                        System.out.println(e + " " + node);
+                        convo.addEdge(nwEdge, node, "mouse");
+                        rebuild();
+                        break;
+                    default:
+                        break;
+                }
             }
             // TODO topic.setText(convo.getSelNodeText());
             frame.repaint();

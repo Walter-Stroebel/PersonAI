@@ -76,7 +76,7 @@ public class LLMPanel extends JPanel {
         setLayout(new GridBagLayout());
         GridBagConstraints mainGBC = new GridBagConstraints();
         mainGBC.fill = GridBagConstraints.BOTH;
-        mainGBC.weightx=0.8;
+        mainGBC.weightx = 0.8;
         MouseAdapter ma = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -98,15 +98,15 @@ public class LLMPanel extends JPanel {
         };
         mainGBC.gridx = 0;
         mainGBC.gridy = 0;
-        mainGBC.weighty=0.2;
+        mainGBC.weighty = 0.2;
         add(titledScrollPane("System", system, ma), mainGBC);
         mainGBC.gridx = 0;
         mainGBC.gridy = 1;
-        mainGBC.weighty=0.6;
+        mainGBC.weighty = 0.6;
         add(titledScrollPane("Text", text, ma), mainGBC);
         mainGBC.gridx = 0;
         mainGBC.gridy = 2;
-        mainGBC.weighty=0.2;
+        mainGBC.weighty = 0.2;
         add(titledScrollPane("Question", question, ma), mainGBC);
         system.setEditable(true);
         system.setContentType("text/plain");
@@ -141,7 +141,7 @@ public class LLMPanel extends JPanel {
         mainGBC.gridx = 1;
         mainGBC.gridy = 0;
         mainGBC.gridheight = 3;
-        mainGBC.weightx=0.2;
+        mainGBC.weightx = 0.2;
         add(sidePanel, mainGBC);
     }
 

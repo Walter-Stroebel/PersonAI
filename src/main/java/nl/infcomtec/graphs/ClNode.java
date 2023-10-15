@@ -146,6 +146,7 @@ public class ClNode {
 
     /**
      * Build from JSON input.
+     *
      * @param g Graph to add the new node to.
      * @param nj Node in JSON form.
      */

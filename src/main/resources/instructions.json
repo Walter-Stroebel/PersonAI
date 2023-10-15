@@ -1,76 +1,76 @@
 {
-  "insList": [
-    {
-      "description": "Explain more",
-      "prompt": "The user is unclear or unsure about the provided answer, please clarify."
-    },
-    {
-      "description": "Summarize below",
-      "prompt": "Please summarize this text."
-    },
-    {
-      "description": "Expand",
-      "prompt": "Reflect on this text and offer more options."
-    },
-    {
-      "description": "Alternatives",
-      "prompt": "Find any alternatives from this text."
-    },
-    {
-      "description": "Analyze",
-      "prompt": "Analyze this text and report."
-    },
-    {
-      "description": "Condense",
-      "prompt": "Condense this text by removing duplicate or repetitive information."
-    },
-    {
-      "description": "Contextualize",
-      "prompt": "Please provide relevant background information on this topic."
-    },
-    {
-      "description": "Compare",
-      "prompt": "Compare this information with other known or opposing concepts."
-    },
-    {
-      "description": "Validate",
-      "prompt": "Confirm the source or accuracy of this information."
-    },
-    {
-      "description": "Refute",
-      "prompt": "Provide arguments against the points made in this text."
-    },
-    {
-      "description": "Elaborate Examples",
-      "prompt": "Offer examples to clarify this point."
-    },
-    {
-      "description": "Rephrase",
-      "prompt": "Please rephrase this text to avoid jargon or to clarify meaning."
-    },
-    {
-      "description": "Categorize",
-      "prompt": "Categorize the points made in this text."
-    },
-    {
-      "description": "Trace Implications",
-      "prompt": "What are the potential consequences or implications of this information?"
-    },
-    {
-      "description": "Check Relevance",
-      "prompt": "Is this information still relevant?"
-    },
-    {
-      "description": "Restructure",
-      "prompt": "Divide the text into distinct sections or units of meaning. Each section should encapsulate a single idea, topic, or argument. Precede each section with a short header starting with a '#' character."
-    },
-    {
-      "description": "Metric",
-      "prompt": "Please use metric units and Celcius if applicable."
-    },
-    {
-      "description": "Priority Sort",
-      "prompt": "Arrange this information by order of importance or relevance."
-    }
-  ]
+    "insList": [
+        {
+            "description": "Explain more",
+            "prompt": "The user is unclear or unsure about the provided answer, please clarify."
+        },
+        {
+            "description": "Summarize below",
+            "prompt": "Please summarize this text."
+        },
+        {
+            "description": "Expand",
+            "prompt": "Reflect on this text and offer more options."
+        },
+        {
+            "description": "Alternatives",
+            "prompt": "Find any alternatives from this text."
+        },
+        {
+            "description": "Analyze",
+            "prompt": "Analyze this text and report."
+        },
+        {
+            "description": "Condense",
+            "prompt": "Condense this text by removing duplicate or repetitive information."
+        },
+        {
+            "description": "Contextualize",
+            "prompt": "Please provide relevant background information on this topic."
+        },
+        {
+            "description": "Compare",
+            "prompt": "Compare this information with other known or opposing concepts."
+        },
+        {
+            "description": "Validate",
+            "prompt": "Confirm the source or accuracy of this information."
+        },
+        {
+            "description": "Refute",
+            "prompt": "Provide arguments against the points made in this text."
+        },
+        {
+            "description": "Elaborate Examples",
+            "prompt": "Offer examples to clarify this point."
+        },
+        {
+            "description": "Rephrase",
+            "prompt": "Please rephrase this text to avoid jargon or to clarify meaning."
+        },
+        {
+            "description": "Categorize",
+            "prompt": "Categorize the points made in this text."
+        },
+        {
+            "description": "Trace Implications",
+            "prompt": "What are the potential consequences or implications of this information?"
+        },
+        {
+            "description": "Check Relevance",
+            "prompt": "Is this information still relevant?"
+        },
+        {
+            "description": "Restructure",
+            "prompt": "Divide the text into distinct sections or units of meaning. Each section should encapsulate a single idea, topic, or argument. Precede each section with a short header starting with a '#' character."
+        },
+        {
+            "description": "Metric",
+            "prompt": "Please use metric units and Celcius if applicable."
+        },
+        {
+            "description": "Priority Sort",
+            "prompt": "Arrange this information by order of importance or relevance."
+        }
+    ]
 }
