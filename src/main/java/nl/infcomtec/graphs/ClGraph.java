@@ -47,9 +47,6 @@ public class ClGraph {
 
     public static final String EOLN = System.lineSeparator();
 
-    public static String dotColor(Color c) {
-        return "\"#" + Integer.toHexString(c.getRGB()).substring(2) + "\"";
-    }
     public static final Random random = new Random();
     public static final int loMark = Integer.parseInt("1000", 36);
     public static final int hiMark = Integer.parseInt("zzzz", 36);
@@ -68,6 +65,10 @@ public class ClGraph {
         1334729, 1335004, 1335390, 1335393, 1335400, 1338132, 1338816, 1339428, 1355392, 1359193, 1366069, 1366969, 1376632, 1377398, 1377401,
         1377424, 1377431, 1394561, 1394669, 1394863, 1394885, 1395151, 1395173, 1485668, 1499024, 1506800, 1610927, 1655669, 1655675, 1661285,
         1661992, 1666020}));
+
+    public static String dotColor(Color c) {
+        return "\"#" + Integer.toHexString(c.getRGB()).substring(2) + "\"";
+    }
 
     public static String getUniqueMark(String text) {
         while (true) {
@@ -92,55 +93,6 @@ public class ClGraph {
             if (!text.contains(ret)) {
                 return mark;
             }
-        }
-    }
-
-    private void update(UText ut) {
-        ClNode get = nodeMap.get(ut.uid);
-        if (null == get) {
-            JOptionPane.showMessageDialog(null, "You messed up a marker " + ut.uid);
-            return;
-        }
-        if (get instanceof ClEdge) {
-            // TODO Edge editing not supported
-            return;
-        }
-        int eoLab = ut.text.indexOf("#");
-        int eoShp = ut.text.indexOf("#", eoLab + 1);
-        get.setUserObj(ut.text.substring(eoShp + 1).trim());
-        get.shape = ut.text.substring(eoLab + 1, eoShp);
-        get.label = ut.text.substring(0, eoLab);
-    }
-
-    public void parse(String text) {
-        List<UText> texts = getTexts(text);
-        for (UText ut : texts) {
-            update(ut);
-        }
-    }
-
-    public static class UText implements Comparable<UText> {
-
-        public final int uid;
-        public final StringBuilder text;
-
-        public UText(int uid, String text) {
-            this.uid = uid;
-            this.text = new StringBuilder(text);
-        }
-
-        public UText(int uid, StringBuilder text) {
-            this(uid, text.toString());
-        }
-
-        @Override
-        public int compareTo(UText t) {
-            return Integer.compare(uid, t.uid);
-        }
-
-        @Override
-        public String toString() {
-            return "UText{" + "uid=" + Integer.toString(uid, 36) + ", text=" + text + '}';
         }
     }
 
@@ -195,6 +147,10 @@ public class ClGraph {
         }
         return ret;
     }
+
+    private static boolean isNode(ClNode node) {
+        return !(node instanceof ClEdge);
+    }
     public final AtomicReference<Color> defaultNodeForegroundColor = new AtomicReference<>(Color.BLACK);
     public final AtomicReference<Color> defaultNodeBackgroundColor = new AtomicReference<>(Color.WHITE);
     public final AtomicReference<Color> defaultEdgeForegroundColor = new AtomicReference<>(Color.BLACK);
@@ -206,6 +162,31 @@ public class ClGraph {
      * Default is top-down, set to true for left-to-right.
      */
     public boolean lr = false;
+    private final Stack<byte[]> stack = new Stack<>();
+
+    private void update(UText ut) {
+        ClNode get = nodeMap.get(ut.uid);
+        if (null == get) {
+            JOptionPane.showMessageDialog(null, "You messed up a marker " + ut.uid);
+            return;
+        }
+        if (get instanceof ClEdge) {
+            // TODO Edge editing not supported
+            return;
+        }
+        int eoLab = ut.text.indexOf("#");
+        int eoShp = ut.text.indexOf("#", eoLab + 1);
+        get.setUserStr(ut.text.substring(eoShp + 1).trim());
+        get.shape = ut.text.substring(eoLab + 1, eoShp);
+        get.label = ut.text.substring(0, eoLab);
+    }
+
+    public void parse(String text) {
+        List<UText> texts = getTexts(text);
+        for (UText ut : texts) {
+            update(ut);
+        }
+    }
 
     public synchronized void clear() {
         nodeMap.clear();
@@ -287,22 +268,12 @@ public class ClGraph {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         List<NodeJSON> l = new LinkedList<>();
         for (ClNode n : getNodes()) {
-            NodeJSON nj = new NodeJSON(n.uid, n.foreColor.getRGB(), n.backColor.getRGB());
-            nj.label = n.label;
-            if (isNode(n)) {
-                nj.userObj = n.getUserStr();
-                nj.shape = n.shape;
-                l.add(nj);
-            }
+            l.add(new NodeJSON(n));
         }
         for (ClEdge e : getEdges()) {
-            NodeJSON nj = new NodeJSON(e.uid, e.foreColor.getRGB(), e.backColor.getRGB());
-            nj.label = e.label;
-            nj.from = e.fromNode.getId();
-            nj.to = e.toNode.getId();
-            l.add(nj);
+            l.add(new NodeJSON(e));
         }
-        try ( OutputStreamWriter fw = new OutputStreamWriter(baos)) {
+        try (OutputStreamWriter fw = new OutputStreamWriter(baos)) {
             gson.toJson(l, fw);
             fw.write(System.lineSeparator());
         } catch (IOException ex) {
@@ -374,10 +345,6 @@ public class ClGraph {
         nodeMap.remove(node.uid);
     }
 
-    private static boolean isNode(ClNode node) {
-        return !(node instanceof ClEdge);
-    }
-
     public void save(File f, Gson gson) {
         List<NodeJSON> l = new LinkedList<>();
         for (ClNode n : getNodes()) {
@@ -399,7 +366,7 @@ public class ClGraph {
         if (f.exists() && !f.delete()) {
             throw new RuntimeException("Bad save file " + f);
         }
-        try ( FileWriter fw = new FileWriter(f)) {
+        try (FileWriter fw = new FileWriter(f)) {
             gson.toJson(l, fw);
             fw.write(System.lineSeparator());
         } catch (IOException ex) {
@@ -409,7 +376,7 @@ public class ClGraph {
 
     protected synchronized void load(File f, Gson gson) {
         clear();
-        try ( FileReader fr = new FileReader(f)) {
+        try (FileReader fr = new FileReader(f)) {
             NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
             for (NodeJSON nj : l) {
                 // clean up
@@ -439,15 +406,19 @@ public class ClGraph {
             throw new RuntimeException("Error reading from " + f, ex);
         }
     }
-    private final Stack<byte[]> stack = new Stack<>();
 
+    /**
+     * Pop last pushed version, if any.
+     *
+     * @param gson CoDec.
+     */
     public synchronized void pop(Gson gson) {
         if (stack.isEmpty()) {
             return;
         }
         ByteArrayInputStream bais = new ByteArrayInputStream(stack.pop());
         clear();
-        try ( InputStreamReader fr = new InputStreamReader(bais)) {
+        try (InputStreamReader fr = new InputStreamReader(bais)) {
             NodeJSON[] l = gson.fromJson(fr, NodeJSON[].class);
             for (NodeJSON nj : l) {
                 if (nj.label.length() > 20) {
@@ -483,7 +454,7 @@ public class ClGraph {
 
     public BufferedImage render() throws Exception {
         BufferedImage image;
-        try ( PipedOutputStream out = new PipedOutputStream();  PipedInputStream in = new PipedInputStream(out)) {
+        try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
             // Create a ToolManager instance as Runnable
             ToolManager tm = new ToolManager() {
                 @Override
@@ -515,7 +486,7 @@ public class ClGraph {
         nodeCenters = new HashMap<>();
         double scaleX = 1.0;
         double scaleY = 1.0;
-        try ( PipedOutputStream out = new PipedOutputStream();  PipedInputStream in = new PipedInputStream(out)) {
+        try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
             ToolManager tm = new ToolManager() {
                 @Override
                 public void run() {
@@ -529,7 +500,7 @@ public class ClGraph {
             toolThread.start();
 
             // Read plain text format from PipedInputStream
-            try ( BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] fields = line.split(" ");
@@ -573,6 +544,31 @@ public class ClGraph {
 
     public ClNode getFirstNode() {
         return nodeMap.isEmpty() ? null : nodeMap.firstEntry().getValue();
+    }
+
+    public static class UText implements Comparable<UText> {
+
+        public final int uid;
+        public final StringBuilder text;
+
+        public UText(int uid, String text) {
+            this.uid = uid;
+            this.text = new StringBuilder(text);
+        }
+
+        public UText(int uid, StringBuilder text) {
+            this(uid, text.toString());
+        }
+
+        @Override
+        public int compareTo(UText t) {
+            return Integer.compare(uid, t.uid);
+        }
+
+        @Override
+        public String toString() {
+            return "UText{" + "uid=" + Integer.toString(uid, 36) + ", text=" + text + '}';
+        }
     }
 
 }

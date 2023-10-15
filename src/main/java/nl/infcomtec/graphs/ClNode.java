@@ -16,7 +16,7 @@ public class ClNode {
     protected final Color foreColor;
     protected final Color backColor;
     protected String shape = "ellipse";
-    private Object userObj;
+    private String userStr;
 
     /**
      * Constructor to initialize a ClNode.
@@ -118,16 +118,9 @@ public class ClNode {
         return sb.toString();
     }
 
-    /**
-     * @return the userObj
-     */
-    public Object getUserObj() {
-        return userObj;
-    }
-
     public String getUserStr() {
-        if (null != userObj) {
-            return userObj.toString();
+        if (null != userStr) {
+            return userStr.toString();
         }
         return "";
     }
@@ -135,22 +128,27 @@ public class ClNode {
     /**
      * @param userObj the userObj to set
      */
-    public void setUserObj(Object userObj) {
-        this.userObj = userObj;
+    public void setUserStr(String userObj) {
+        this.userStr = userObj;
     }
 
     /**
-     * Add a string to or set the userObt to the string.
+     * Add a string to or set the userStr to the string.
      *
      * @param str String to add or set.
      */
-    public void appendUserObj(String str) {
+    public void appendUserStr(String str) {
         StringBuilder cur = new StringBuilder(getUserStr());
         cur.append(System.lineSeparator());
         cur.append(str);
-        userObj = cur.toString();
+        userStr = cur.toString();
     }
 
+    /**
+     * Build from JSON input.
+     * @param g Graph to add the new node to.
+     * @param nj Node in JSON form.
+     */
     public ClNode(ClGraph g, NodeJSON nj) {
         this.backColor = new Color(nj.bCol);
         this.foreColor = new Color(nj.fCol);
@@ -158,7 +156,7 @@ public class ClNode {
         this.graph = g;
         this.label = nj.label;
         this.shape = nj.shape;
-        this.userObj = nj.userObj;
+        this.userStr = nj.userObj;
     }
 
     @Override
@@ -167,10 +165,15 @@ public class ClNode {
         sb.append(getMark());
         sb.append(label).append('#');
         sb.append(shape).append('#').append(ClGraph.EOLN);
-        sb.append(userObj);
+        sb.append(userStr);
         return sb.toString();
     }
 
+    /**
+     * For use in a JTree,
+     *
+     * @return TreeNode branch.
+     */
     public DefaultMutableTreeNode toTreeNode() {
         DefaultMutableTreeNode ret = new DefaultMutableTreeNode("NODE");
         {
@@ -186,7 +189,7 @@ public class ClNode {
             ret.add(val);
         }
         {
-            DefaultMutableTreeNode val = new DefaultMutableTreeNode("text=" + userObj.toString());
+            DefaultMutableTreeNode val = new DefaultMutableTreeNode("text=" + userStr.toString());
             ret.add(val);
         }
         return ret;

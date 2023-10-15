@@ -671,7 +671,7 @@ public class PersonAI {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 convo.push(gson);
-                e.fromNode.appendUserObj(e.toNode.getUserStr());
+                e.fromNode.appendUserStr(e.toNode.getUserStr());
                 e.fromNode.label += e.toNode.label;
                 convo.delete(e.toNode);
                 convo.delete(e);

@@ -71,11 +71,11 @@ public class Conversation extends ClGraph {
     }
 
     public static void setHTML(ClNode node, String text) {
-        node.setUserObj(new PandocConverter().convertHTMLToMarkdown(text));
+        node.setUserStr(new PandocConverter().convertHTMLToMarkdown(text));
     }
 
     public static void setText(ClNode node, String text) {
-        node.setUserObj(text);
+        node.setUserStr(text);
     }
 
     public StringBuilder getSelectedText(String userInput) {
