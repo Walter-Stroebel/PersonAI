@@ -102,7 +102,7 @@ public class PersonAI {
         new PersonAI();
     }
 
-    private static void doConfig() {
+    public static void doConfig() {
         GraphicsEnvironment grEnv = GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice defaultScreen = grEnv.getDefaultScreenDevice();
         DisplayMode displayMode = defaultScreen.getDisplayMode();
@@ -198,7 +198,7 @@ public class PersonAI {
         setVisible();
     }
 
-    private void setUI() {
+    public static void setupGUI() {
         Set<Map.Entry<Object, Object>> entries = new HashSet(UIManager.getLookAndFeelDefaults().entrySet());
         for (Map.Entry<Object, Object> entry : entries) {
             if (entry.getKey().toString().endsWith(".font")) {
@@ -216,7 +216,6 @@ public class PersonAI {
             }
         });
          */
-        saveConfig();
     }
 
     private void initGUI() {
@@ -226,7 +225,8 @@ public class PersonAI {
             } catch (IOException ex) {
                 Logger.getLogger(PersonAI.class.getName()).log(Level.SEVERE, null, ex);
             }
-            setUI();
+            setupGUI();
+            saveConfig();
             frame = new JFrame("PersonAI");
             toolBar = new JToolBar();
             tabbedPane.set(new JTabbedPane());
@@ -242,12 +242,6 @@ public class PersonAI {
             JPanel viewPanel = dotViewer.getScalePanPanel();
             dot.addListener(new GraphMouse("Mouse"));
             grPane.add(viewPanel, BorderLayout.CENTER);
-            if (convo.isEmpty()) {
-                ClNode start = convo.newNode("Start", "box", "");
-                addReplaceTab(start).setEditMode(true);
-            } else {
-                addReplaceTab(convo.getFirstNode());
-            }
             tabbedPane.get().addTab(GRAPH_TITLE, grPane);
             {
                 LLMPanel ask = new LLMPanel(this, new AbstractAction() {
@@ -658,8 +652,8 @@ public class PersonAI {
         }
     }
 
-    public void splitNode(ClNode node, String textBeforeSelection, String selectedText, String textAfterSelection) {
-        Conversation.setText(node, textBeforeSelection + textAfterSelection);
+    public void splitNode(ClNode node, String remainingText, String selectedText) {
+        Conversation.setText(node, remainingText);
         ClNode n2 = convo.newNode("split", node.getShape(), selectedText);
         convo.addEdge(node, n2, "split");
         rebuild();
@@ -767,22 +761,25 @@ public class PersonAI {
         }
 
         @Override
-        public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, Point2D e) {
-            ClNode node = convo.getNode(e);
+        public void mouseEvent(ImageObject imgObj, ImageObject.MouseEvents ev, Point2D pnt) {
+            ClNode node = convo.getNode(pnt);
+            if (null == node) {
+                return;
+            }
             if (null != ev) {
                 switch (ev) {
                     case clicked_left:
-                        // TODO convo.selectNode(node, dotViewer);
+                        nwEdge = null;
                         jumpTo(node);
                         break;
-                    case pressed_left:
-                        System.out.println(e + " " + node);
+                    case pressed_right:
                         nwEdge = node;
                         break;
-                    case released_left:
-                        System.out.println(e + " " + node);
-                        convo.addEdge(nwEdge, node, "mouse");
-                        rebuild();
+                    case released_right:
+                        if (null != nwEdge) {
+                            convo.addEdge(nwEdge, node, "mouse");
+                            rebuild();
+                        }
                         break;
                     default:
                         break;

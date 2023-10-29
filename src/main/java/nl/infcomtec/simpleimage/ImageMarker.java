@@ -138,7 +138,8 @@ public class ImageMarker extends ImageViewer {
             addMouseWheelListener(ma);
             imgObj.addListener(new ImageObject.ImageObjectListener("Repaint") {
                 @Override
-                public void imageChanged(ImageObject imgObj) {
+                public void imageChanged(ImageObject imgObj, double resizeHint) {
+                    scale *= resizeHint;
                     repaint(); // Repaint the panel to reflect any changes
                 }
             });

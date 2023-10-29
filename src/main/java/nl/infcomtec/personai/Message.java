@@ -29,4 +29,14 @@ public class Message {
         ret.addProperty("content", content);
         return ret;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Message{");
+        sb.append("role=").append(role);
+        sb.append(", content=").append(content);
+        sb.append('}');
+        return sb.toString();
+    }
 }

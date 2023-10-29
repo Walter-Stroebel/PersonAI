@@ -7,8 +7,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -19,14 +17,11 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import nl.infcomtec.graphs.ClNode;
@@ -53,12 +48,9 @@ public class NodePanel extends JPanel {
     private final JSlider fontSizer;
     private final JTextField tfLabel;
     private boolean html = true;
-    private String wholeText;
-    private int selectionStart;
-    private int selectionEnd;
-    private String textBeforeSelection;
-    private String selectedText;
-    private String textAfterSelection;
+    private JButton btReset;
+    private JButton btDelete;
+    private JButton btSplit;
 
     /**
      * Creates new form NodePanel
@@ -99,42 +91,6 @@ public class NodePanel extends JPanel {
     private void initComponents() {
         setLayout(new java.awt.BorderLayout());
         editorPane.setEditable(false);
-        final JPopupMenu popupMenu = new JPopupMenu();
-        JMenuItem breakNodeItem = new JMenuItem(new AbstractAction("Split text into nodes") {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                owner.splitNode(node, textBeforeSelection, selectedText, textAfterSelection);
-            }
-        });
-
-        popupMenu.add(breakNodeItem);
-
-        editorPane.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    if (html) {
-                        JOptionPane.showMessageDialog(editorPane, "Right click is not supported in html mode");
-                    } else {
-                        // Get the whole text
-                        wholeText = editorPane.getText();
-
-                        // Get the start and end indices of the selected text
-                        selectionStart = editorPane.getSelectionStart();
-                        selectionEnd = editorPane.getSelectionEnd();
-
-                        // Extract the parts of the text
-                        textBeforeSelection = wholeText.substring(0, selectionStart);
-                        selectedText = editorPane.getSelectedText();
-                        textAfterSelection = wholeText.substring(selectionEnd);
-                        popupMenu.show(editorPane, e.getX(), e.getY());
-                    }
-                }
-            }
-        });
-        if (editorPane.isEditable()) {
-            throw new RuntimeException("No!");
-        }
         editorPane.setContentType("text/html");
         editorPane.setFont(dFont.get());
         mainScrollPane.setViewportView(editorPane);
@@ -177,7 +133,7 @@ public class NodePanel extends JPanel {
                 rebuild.actionPerformed(null);
             }
         });
-        JButton btReset = new JButton(new AbstractAction("Clear") {
+        btReset = new JButton(new AbstractAction("Clear") {
             @Override
             public void actionPerformed(ActionEvent ae) {
                 editorPane.setContentType("text/plain");
@@ -186,7 +142,43 @@ public class NodePanel extends JPanel {
                 btEdit.setSelected(true);
             }
         });
-        enclosed(gc, "Actions", sidePanel, btApply, btReset);
+        btDelete = new JButton(new AbstractAction("Delete") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                owner.convo.delete(node);
+            }
+        });
+        btSplit = new JButton(new AbstractAction("Split") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                StringBuilder text = new StringBuilder(editorPane.getText());
+                String sel = editorPane.getSelectedText();
+                if (null == sel || sel.trim().isEmpty()) {
+                    JOptionPane.showMessageDialog(null, "You need to select something to split?");
+                } else {
+                    int startPos = text.indexOf(sel);
+                    if (startPos < 0) {
+                        System.out.println("Text=[" + text + "]\nSel=[" + sel + "]\nStart=" + startPos);
+                        return;
+                    }
+                    int endPos = startPos + sel.length();
+                    text.delete(startPos, endPos);
+                    String left = text.toString();
+                    System.out.println("Sel=[" + sel + "]\nLeft=[" + left + "]\nStart/Stop=" + startPos + "/" + endPos);
+                    if (left.trim().isEmpty()) {
+                        sel = sel.trim();
+                        editorPane.setText(sel);
+                        JOptionPane.showMessageDialog(null, "There must be something left after the split.");
+                    } else {
+                        sel = sel.trim() + System.lineSeparator();
+                        left = left.trim() + System.lineSeparator();
+                        owner.splitNode(node, left.trim(), sel);
+                    }
+                }
+            }
+        });
+        btSplit.setEnabled(!html);
+        enclosed(gc, "Actions", sidePanel, btApply, btReset, btDelete, btSplit);
         sidePanel.add(Box.createVerticalGlue());
         gc.gridwidth = 2;
         sidePanel.add(owner.graphPanel(node), gc);
@@ -221,12 +213,14 @@ public class NodePanel extends JPanel {
             editorPane.setContentType("text/plain");
             editorPane.setText(tt);
             editorPane.setEditable(true);
+            btSplit.setEnabled(true);
             html = false;
         } else if (!html) {
             String ht = new PandocConverter().convertMarkdownToHTML(editorPane.getText());
             editorPane.setContentType("text/html");
             editorPane.setText(ht);
             editorPane.setEditable(false);
+            btSplit.setEnabled(false);
             html = true;
         }
         btEdit.setSelected(b);
