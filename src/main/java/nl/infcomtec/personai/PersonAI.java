@@ -199,7 +199,7 @@ public class PersonAI {
     }
 
     public static void setupGUI() {
-        Set<Map.Entry<Object, Object>> entries = new HashSet(UIManager.getLookAndFeelDefaults().entrySet());
+        Set<Map.Entry<Object, Object>> entries = new HashSet<>(UIManager.getLookAndFeelDefaults().entrySet());
         for (Map.Entry<Object, Object> entry : entries) {
             if (entry.getKey().toString().endsWith(".font")) {
                 UIManager.put(entry.getKey(), font);

@@ -1,4 +1,4 @@
-# Welcome to a simpel AI interface.
+# Welcome to a simple AI interface.
 
 Here are the various components:
 
@@ -24,7 +24,7 @@ Just like with a normal chat interface.
 Except this does not automatically clear so you can
 easily change the question.
 
-Also, there is an explicite send button so no need for
+Also, there is an explicit send button so no need for
 shift-Enter to just type a new line.
 
 Basically a mini text editor.

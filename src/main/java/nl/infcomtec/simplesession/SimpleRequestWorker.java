@@ -10,7 +10,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import nl.infcomtec.personai.Message;
 import nl.infcomtec.personai.OpenAIAPI;
-import nl.infcomtec.personai.PersonAI;
+import nl.infcomtec.personai.TraceLogger;
 import nl.infcomtec.personai.Usage;
 
 /**
@@ -44,6 +44,7 @@ public class SimpleRequestWorker extends SwingWorker<String, String> {
 
     @Override
     protected String doInBackground() {
+        TraceLogger.traceMe("rqwork");
         long stCall = System.currentTimeMillis();
         try {
             if (!text.isEmpty()) {
@@ -67,7 +68,7 @@ public class SimpleRequestWorker extends SwingWorker<String, String> {
             }
             publish(String.format("Call tokens:\n  %5d in\n  %5d response",
                     promptTokens.get(), outputTokens.get()));
-            cost = promptTokens.get() * PersonAI.ITC + outputTokens.get() * PersonAI.OTC;
+            cost = promptTokens.get() * OpenAIAPI.ITC + outputTokens.get() * OpenAIAPI.OTC;
             publish(String.format("Call time:\n  %5.3f seconds\nCall cost:\n  %5.3f cents",
                     (System.currentTimeMillis() - stCall) * 1E-3, cost * 100));
         } catch (Exception e) {

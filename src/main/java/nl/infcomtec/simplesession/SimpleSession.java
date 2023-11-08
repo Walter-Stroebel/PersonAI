@@ -29,12 +29,16 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JToolBar;
 import javax.swing.JTree;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 import nl.infcomtec.personai.Instruction;
 import nl.infcomtec.personai.Instructions;
+import nl.infcomtec.personai.OpenAIAPI;
 import nl.infcomtec.personai.PersonAI;
 import nl.infcomtec.personai.TraceLogger;
 import nl.infcomtec.tools.PandocConverter;
@@ -92,6 +96,8 @@ public class SimpleSession {
     private final JTextArea userInput;
     private final JEditorPane textPane;
     private JTextArea progMsg;
+    private double sessionCost = 0;
+    private NodeLLM selectedNode;
 
     public SimpleSession() {
         PersonAI.doConfig();
@@ -103,11 +109,37 @@ public class SimpleSession {
         root = new DefaultMutableTreeNode("Questions:");
         mainTree = new JTree(root);
         mainTree.setPreferredSize(new Dimension(PersonAI.config.w20Per, PersonAI.config.hFull));
+        // Add a TreeSelectionListener to the JTree
+        mainTree.addTreeSelectionListener(new TreeSelectionListener() {
+            @Override
+            public void valueChanged(TreeSelectionEvent e) {
+                TreePath path = e.getNewLeadSelectionPath(); // Get the new path that has been selected
+                if (path != null) {
+                    if (mainTree.isExpanded(path)) {
+                        mainTree.collapsePath(path);
+                    } else {
+                        mainTree.expandPath(path);
+                    }
+                }
+                Object last = mainTree.getLastSelectedPathComponent();
+                if (last instanceof DefaultMutableTreeNode) {
+                    DefaultMutableTreeNode dmtn = (DefaultMutableTreeNode) last;
+
+                    if (dmtn.getUserObject() instanceof NodeLLM) {
+                        selectedNode = (NodeLLM) dmtn.getUserObject();
+                        String html = new PandocConverter().convertMarkdownToHTML(selectedNode.answer);
+                        textPane.setText(html);
+                    }
+                }
+            }
+        });
+
         frm.getContentPane().setLayout(new BorderLayout());
         frm.getContentPane().add(new JScrollPane(mainTree), BorderLayout.WEST);
         loadActions();
         JPanel userInputPanel = new JPanel(new BorderLayout());
-        userInput = new JTextArea();
+        userInput = new JTextArea(10, 132);
+        userInput.setLineWrap(true);
         userInput.setWrapStyleWord(true);
         userInput.setPreferredSize(new Dimension(PersonAI.config.w20Per / 5 * 4, PersonAI.config.h20Per));
         userInputPanel.setBorder(
@@ -159,10 +191,16 @@ public class SimpleSession {
                     Enumeration<TreeNode> en = root.children();
                     while (en.hasMoreElements()) {
                         TreeNode e = en.nextElement();
-                        if (e instanceof NodeLLM) {
-                            NodeLLM n = (NodeLLM) e;
-                            sb.append("# Question: ").append(n.question).append(EOLN).append(EOLN);
-                            sb.append("# Answer:").append(EOLN).append(EOLN).append(n.answer).append(EOLN).append(EOLN);
+                        if (e instanceof DefaultMutableTreeNode) {
+                            DefaultMutableTreeNode dmtn = (DefaultMutableTreeNode) e;
+                            if (dmtn.getUserObject() instanceof NodeLLM) {
+                                NodeLLM n = (NodeLLM) dmtn.getUserObject();
+                                sb.append("# Question: ").append(n.question).append(EOLN).append(EOLN);
+                                if (!n.text.isEmpty()) {
+                                    sb.append("# Original text").append(EOLN).append(n.text).append(EOLN).append(EOLN);
+                                }
+                                sb.append("# Answer:").append(EOLN).append(EOLN).append(n.answer).append(EOLN).append(EOLN);
+                            }
                         }
                     }
                     new PandocConverter().convertMarkdownToFile(sb.toString(), f);
@@ -215,7 +253,9 @@ public class SimpleSession {
                         NodeLLM[] fromJson = PersonAI.gson.fromJson(fr, NodeLLM[].class);
                         root.removeAllChildren();
                         for (NodeLLM aj : fromJson) {
-                            root.add(new DefaultMutableTreeNode(aj));
+                            DefaultMutableTreeNode aNode = new DefaultMutableTreeNode(aj);
+                            root.add(aNode);
+                            extentNodeLLM(aNode, aj);
                         }
                         ((DefaultTreeModel) mainTree.getModel()).reload();
                     } catch (IOException ex) {
@@ -239,23 +279,36 @@ public class SimpleSession {
                 public void actionPerformed(ActionEvent ae) {
                     final NodeLLM answer = new NodeLLM();
                     answer.question = i.prompt;
-                    callAPI(answer, new PandocConverter().convertHTMLToMarkdown(textPane.getText()));
+                    answer.text = new PandocConverter().convertHTMLToMarkdown(textPane.getText());
+                    callAPI(answer);
                 }
             });
             jb.setToolTipText(i.prompt);
             tb.add(jb);
         }
+        JButton jb = new JButton(new AbstractAction("Ask your own") {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                final NodeLLM answer = new NodeLLM();
+                answer.question = userInput.getText();
+                answer.text = new PandocConverter().convertHTMLToMarkdown(textPane.getText());
+                callAPI(answer);
+            }
+        });
+        jb.setToolTipText("Ask a follow-up question on the text to the left.");
+        jb.setForeground(Color.MAGENTA);
+        tb.add(jb);
         progMsg = new JTextArea();
         progMsg.setFont(new Font(Font.MONOSPACED, Font.PLAIN, PersonAI.config.fontSize));
         tb.add(new JScrollPane(progMsg));
         frame.get().getContentPane().add(tb, BorderLayout.EAST);
     }
 
-    private void callAPI(final NodeLLM answer, String text) {
+    private void callAPI(final NodeLLM answer) {
         String system = "You are a helpful assistant. Always provide a relevant and proactive response.";
         progMsg.setText("Calling LLM..." + EOLN);
         progMsg.setForeground(Color.BLUE.brighter());
-        final SimpleRequestWorker worker = new SimpleRequestWorker(progMsg, system, answer.question, text);
+        final SimpleRequestWorker worker = new SimpleRequestWorker(progMsg, system, answer.question, answer.text);
         Runnable runnable = new Runnable() {
 
             @Override
@@ -268,16 +321,9 @@ public class SimpleSession {
                     answer.inputTokens = worker.promptTokens.get();
                     answer.outputTokens = worker.outputTokens.get();
                     answer.cost = worker.cost;
-                    {
-                        DefaultMutableTreeNode t = new DefaultMutableTreeNode(
-                                String.format("%1$tF %1$tT", answer.at));
-                        aNode.add(t);
-                    }
-                    {
-                        DefaultMutableTreeNode t = new DefaultMutableTreeNode(
-                                String.format("I/O %d/%d %f", answer.inputTokens, answer.outputTokens, answer.cost));
-                        aNode.add(t);
-                    }
+                    extentNodeLLM(aNode, answer);
+                    sessionCost += answer.cost;
+                    progMsg.append(String.format("\nSession cost:\n%.2f", sessionCost));
                     final String ans = new PandocConverter().convertMarkdownToHTML(answer.answer);
                     EventQueue.invokeLater(new Runnable() {
                         @Override
@@ -296,6 +342,29 @@ public class SimpleSession {
         worker.execute();
     }
 
+    private void extentNodeLLM(final DefaultMutableTreeNode aNode, NodeLLM answer) {
+        {
+            DefaultMutableTreeNode t = new DefaultMutableTreeNode(
+                    String.format("At: %1$tF %1$tT", answer.at));
+            aNode.add(t);
+        }
+        {
+            DefaultMutableTreeNode t = new DefaultMutableTreeNode(
+                    String.format("Input: %d tokens, %f cents", answer.inputTokens, answer.inputTokens * OpenAIAPI.ITC));
+            aNode.add(t);
+        }
+        {
+            DefaultMutableTreeNode t = new DefaultMutableTreeNode(
+                    String.format("Output: %d tokens, %f cents", answer.outputTokens, answer.outputTokens * OpenAIAPI.OTC));
+            aNode.add(t);
+        }
+        {
+            DefaultMutableTreeNode t = new DefaultMutableTreeNode(
+                    String.format("Total cost: %f cents", answer.cost));
+            aNode.add(t);
+        }
+    }
+
     private class SubmitAction extends AbstractAction {
 
         public SubmitAction() {
@@ -306,7 +375,7 @@ public class SimpleSession {
         public void actionPerformed(ActionEvent ae) {
             final NodeLLM answer = new NodeLLM();
             answer.question = userInput.getText();
-            callAPI(answer, "");
+            callAPI(answer);
         }
 
     }
@@ -315,6 +384,7 @@ public class SimpleSession {
 
         public String question = "";
         public String answer = "";
+        public String text = "";
         private long at;
         private int inputTokens;
         private int outputTokens;

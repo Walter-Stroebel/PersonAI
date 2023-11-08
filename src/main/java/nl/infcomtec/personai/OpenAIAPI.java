@@ -28,12 +28,16 @@ public class OpenAIAPI {
     private static final String API_ENDPOINT = "https://api.openai.com/v1/chat/completions";
     private static final File apiKeyFile = new File(System.getProperty("user.home"), "openai_aug.key");
     public static final ConcurrentLinkedDeque<Usage> usages = new ConcurrentLinkedDeque<>();
-    public static final String MODEL_NAME = "gpt-3.5-turbo-16k";
-    private static final String SYSTEM_PROMPT1="You are a helpful assistant. Always provide a relevant and proactive response.";
+    public static final String MODEL_NAME = "gpt-4-1106-preview";
+    private static final String SYSTEM_PROMPT1 = "You are a helpful assistant. Always provide a relevant and proactive response.";
     /**
      * For debugging, make this an opened file.
      */
     public static RandomAccessFile traceFile;
+    public static final int MAX_TOKENS = 4096;
+    public static final int TEMPERATURE = 0;
+    public final static double ITC = 0.01 / 1000;
+    public final static double OTC = 0.03 / 1000;
 
     /**
      * OpenAI key <b>NEVER IN GIT!!!</b>
@@ -103,6 +107,11 @@ public class OpenAIAPI {
             OkHttpClient client = builder.build();
             JsonObject messageJson = new JsonObject();
             messageJson.addProperty("model", MODEL_NAME);
+            messageJson.addProperty("temperature", TEMPERATURE);
+            messageJson.addProperty("max_tokens", MAX_TOKENS);
+            messageJson.addProperty("top_p", 1);
+            messageJson.addProperty("frequency_penalty", 0);
+            messageJson.addProperty("presence_penalty", 0);
             JsonArray messageArray = new JsonArray();
             for (Message e : messages) {
                 messageArray.add(e.get());
@@ -118,6 +127,7 @@ public class OpenAIAPI {
                     .post(requestBody)
                     .build();
             try (Response response = client.newCall(request).execute()) {
+                tl.log("" + response);
                 if (!response.isSuccessful()) {
                     tl.log("Unexpected code " + response);
                     throw new IOException("Unexpected code " + response);

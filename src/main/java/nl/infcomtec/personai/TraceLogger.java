@@ -31,6 +31,7 @@ public class TraceLogger {
             raf.seek(raf.length()); // Move to end of file
             String logEntry = String.format("%1$tFT%1$tT.%1$tL: ~",
                     System.currentTimeMillis()) + message + "~\n";
+            System.err.println(logEntry);
             raf.write(logEntry.getBytes(StandardCharsets.UTF_8));
             raf.getFD().sync(); // Flush changes immediately to disk
         } finally {
